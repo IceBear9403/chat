@@ -75,8 +75,8 @@ export const useCallStore = defineStore('call', {
       }
     },
 
-    /** 主叫：发起通话。 */
-    async call(peer: UserVO, type: number) {
+    /** 主叫：发起通话。媒体延后到对方接听后获取（避免振铃阶段占住摄像头/麦克风）。 */
+    call(peer: UserVO, type: number) {
       if (this.status !== 'idle') {
         showToast('你正在通话中')
         return
@@ -95,13 +95,6 @@ export const useCallStore = defineStore('call', {
       this.peerName = peer.nickname
       this.peerAvatar = peer.avatar ?? ''
       startRing()
-      try {
-        await this.setupPeerConnection()
-      } catch {
-        this.cleanup()
-        showToast('无法获取麦克风/摄像头权限')
-        return
-      }
       publishSignal({
         action: 'invite',
         callId: this.callId,
@@ -118,8 +111,11 @@ export const useCallStore = defineStore('call', {
       try {
         await this.setupPeerConnection()
       } catch {
-        publishSignal({ action: 'reject', callId: this.callId, to: this.callerId })
+        // 媒体不可用无法接听：通知对方结束，而非 reject（避免误导"对方拒听"）
+        const callId = this.callId
+        const to = this.peerId
         this.cleanup()
+        publishSignal({ action: 'end', callId, to, reason: 'media' })
         showToast('无法获取麦克风/摄像头权限')
         return
       }
@@ -147,9 +143,15 @@ export const useCallStore = defineStore('call', {
       this.cleanup()
     },
 
-    /** 建 RTCPeerConnection + 采集媒体（主叫发起时 / 被叫接听时）。 */
+    /** 建 RTCPeerConnection + 采集媒体（主叫接通时 / 被叫接听时）。 */
     async setupPeerConnection() {
       await this.loadIceServers()
+      if (this.pc) {
+        this.pc.close()
+        this.localStream?.getTracks().forEach((t) => t.stop())
+        this.pc = null
+        this.localStream = null
+      }
       const pc = new RTCPeerConnection({ iceServers: this.iceServers })
       pc.onicecandidate = (e) => {
         if (e.candidate) {
@@ -256,7 +258,7 @@ export const useCallStore = defineStore('call', {
       startRing()
     },
 
-    /** 主叫：对方接听 → 发 offer。 */
+    /** 主叫：对方接听 → 获取媒体、发 offer。 */
     async handleAccept(_sig: CallSignalVO) {
       if (this.status !== 'outgoing') {
         return
@@ -265,6 +267,7 @@ export const useCallStore = defineStore('call', {
       stopRing()
       this.startTimer()
       try {
+        await this.setupPeerConnection()
         const pc = this.pc
         if (!pc) return
         const offer = await pc.createOffer()
@@ -276,8 +279,11 @@ export const useCallStore = defineStore('call', {
           sdp: offer.sdp ?? '',
         })
       } catch {
+        const callId = this.callId
+        const to = this.calleeId
         this.cleanup()
-        showToast('通话建立失败')
+        publishSignal({ action: 'end', callId, to, reason: 'media' })
+        showToast('无法获取麦克风/摄像头权限')
       }
     },
 
