@@ -36,6 +36,15 @@ app:
     mock-enabled: ${VERIFY_CODE_MOCK:false}
     sms-sign-name: ${SMS_SIGN_NAME:}
     sms-template-code: ${SMS_TEMPLATE_CODE:}
+  webrtc:
+    # 生产 ICE：公共 STUN + 自建 coturn TURN（阶段六静态凭据，经 env 注入）。
+    # TURN_URL 留空时第三个条目退化为 STUN 兜底（前端会过滤空 urls）。
+    ice-servers:
+      - urls: "stun:stun.l.google.com:19302"
+      - urls: "stun:stun1.l.google.com:19302"
+      - urls: "${TURN_URL:stun:stun.l.google.com:19302}"
+        username: "${TURN_USERNAME:}"
+        credential: "${TURN_PASSWORD:}"
 
 logging:
   level:

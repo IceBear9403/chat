@@ -63,11 +63,14 @@ export const useCallStore = defineStore('call', {
       }
       try {
         const config = await callApi.config()
-        this.iceServers = (config.iceServers ?? []).map((s) => ({
-          urls: s.urls,
-          username: s.username,
-          credential: s.credential,
-        }))
+        // 过滤空 urls（prod 未配 TURN 时第三个条目为 STUN 兜底，不会为空；防御后端脏数据）
+        this.iceServers = (config.iceServers ?? [])
+          .filter((s) => s.urls)
+          .map((s) => ({
+            urls: s.urls,
+            username: s.username,
+            credential: s.credential,
+          }))
         this.iceLoaded = true
       } catch {
         // 配置失败时用默认 STUN 兜底
@@ -163,8 +166,9 @@ export const useCallStore = defineStore('call', {
       pc.ontrack = (e) => {
         this.remoteStream = e.streams[0] ?? null
       }
+      // 显式开启 AEC/降噪/自动增益：不写时各浏览器默认不一致，部分 WebView 关闭 AEC 导致远端听到回声
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: this.callType === 2,
       })
       stream.getTracks().forEach((track) => pc.addTrack(track, stream))

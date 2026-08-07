@@ -5,6 +5,7 @@ import { useCallStore } from '@/store/call'
 const callStore = useCallStore()
 
 const remoteVideoEl = ref<HTMLVideoElement>()
+const remoteAudioEl = ref<HTMLAudioElement>()
 const localVideoEl = ref<HTMLVideoElement>()
 
 const isVideo = computed(() => callStore.callType === 2)
@@ -17,13 +18,28 @@ const durationText = computed(() => {
   return `${mm}:${ss}`
 })
 
-/** 流绑定：元素或流变化时同步到 <video>.srcObject */
-watchEffect(() => {
-  if (remoteVideoEl.value) remoteVideoEl.value.srcObject = callStore.remoteStream
-})
-watchEffect(() => {
-  if (localVideoEl.value) localVideoEl.value.srcObject = callStore.localStream
-})
+/**
+ * 流绑定：元素或流变化时同步到 <video>/<audio>.srcObject。
+ * 显式 play() 兜底移动端 autoplay 限制（媒体流到达时不在用户手势内，靠 autoplay 属性可能被拦截）。
+ * 本地预览强制 muted：WebKit 部分版本 attach 本地流后可能无视 HTML muted 属性，把麦克风声音放出来形成自回声。
+ */
+function bindStream(
+  el: HTMLVideoElement | HTMLAudioElement | undefined,
+  stream: MediaStream | null,
+  muted = false,
+) {
+  if (!el) return
+  if (muted) {
+    el.muted = true
+  }
+  el.srcObject = stream
+  if (stream) {
+    el.play().catch(() => {})
+  }
+}
+watchEffect(() => bindStream(remoteVideoEl.value, callStore.remoteStream))
+watchEffect(() => bindStream(remoteAudioEl.value, callStore.remoteStream))
+watchEffect(() => bindStream(localVideoEl.value, callStore.localStream, true))
 
 function displayName(): string {
   return callStore.peerName || `用户${callStore.peerId}`
@@ -66,6 +82,8 @@ function onCancelOrHangup() {
 
       <!-- 语音通话 / 呼叫中（全屏暗底） -->
       <template v-else>
+        <!-- 语音通话远端音频：隐藏元素播放，不显示画面也不回放本地流 -->
+        <audio ref="remoteAudioEl" class="voice-audio" autoplay playsinline />
         <div class="voice-bg" :class="{ shaking: callStore.status === 'incoming' }">
           <div class="voice-avatar-wrap">
             <!-- 呼吸灯光圈：呼出/来电等待中可见 -->

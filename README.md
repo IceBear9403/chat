@@ -2,7 +2,7 @@
 
 移动端 H5 社交平台，对标微信朋友圈 + 私聊 + 语音/视频通话。前端 H5（Vue 3 + Vite + TypeScript + Vant），后端 Spring Boot 3 多模块。部署目标：阿里云 ECS（Ubuntu）+ 已备案域名。
 
-> 当前进度：**阶段四（音视频通话：WebRTC 信令 + 状态机）已完成，TURN 降级留待阶段六 coturn**。
+> 当前进度：**阶段一~六已完成**。生产部署配置就绪（`deploy/`），待按 [DEPLOY.md](deploy/DEPLOY.md) 在阿里云执行；阶段七（合规与运维）待开发。
 
 ## 目录结构
 
@@ -142,6 +142,38 @@ dev 环境 `app.verify-code.mock-enabled=true`，验证码固定为 `123456`（�
 - 通话未写入聊天会话（消息类型 5），未提供通话历史查询
 - 忙线/超时依赖对端在线与 STOMP 长连接，超时振铃逻辑待完善
 
+## 阶段五已实现功能
+
+**前端（纯 CSS 动效，零新增依赖）**
+- 全局 page 滑动淡入过渡（250-300ms ease-out）+ 卡片柔和阴影
+- 朋友圈：卡片入场 fade-in-up、图片九宫格弹性展开、评论弹层自动聚焦输入框
+- 聊天：新消息气泡弹入动画
+- 会话列表：`van-swipe-cell` 滑动露出删除按钮（带弹簧回弹），删除确认后本地移除
+- 通话面板：来电呼吸灯光圈 + 全屏抖动、视频接通本地小窗弹入、按钮按压反馈
+- 性能：注册 van-lazyload（图片懒加载）、桌面端容器居中适配（max-width 520px）
+- 暗色主题补漏：硬编码 `#999` 统一为 `var(--text-secondary)`
+
+**后端（会话滑动删除支撑）**
+- conversation 表新增 `deleted_a` / `deleted_b` DATETIME 软删字段；`DELETE /api/chat/{conversationId}`
+- 软删后对方发新消息（`last_message_time > deleted_at`）会话自动重新可见
+- 迁移脚本：`docs/sql/migration_phase5_conversation_delete.sql`（需在远程库执行一次）
+
+## 阶段六：生产部署（deploy/）
+
+整套阿里云 Ubuntu 22.04 部署配置见 [deploy/DEPLOY.md](deploy/DEPLOY.md)：
+
+- **docker-compose.yml**：mysql / redis / app（多阶段构建）/ coturn / nginx 五服务，仅 80/443/3478 对外
+- **nginx/default.conf**：全站 HTTPS、gzip、静态缓存、`/api`、`/uploads` 反代、`/ws`+`/ws-sockjs` WebSocket 升级
+- **coturn/turnserver.conf**：TURN/STUN 中继，静态凭据（动态 time-limited 凭据留后续）
+- **deploy.sh**：一键生成 `.env` → 渲染配置 → `docker compose up -d --build`
+- **ssl/issue-cert.sh**：certbot 签发或对接阿里云免费 DV 证书
+
+```bash
+cd deploy
+cp .env.example .env   # 逐项填写
+./deploy.sh
+```
+
 ## 后续阶段
 
 | 阶段 | 内容 | 状态 |
@@ -149,9 +181,9 @@ dev 环境 `app.verify-code.mock-enabled=true`，验证码固定为 `123456`（�
 | 一 | 项目骨架 + 数据库 + 登录注册 + 基础框架 | ✅ |
 | 二 | 朋友圈：发帖、信息流、点赞、评论、转发 | ✅ |
 | 三 | 即时聊天：会话、消息、实时推送、离线补偿 | ✅ |
-| 四 | 音视频通话：WebRTC 信令 + TURN 降级 | ✅（TURN 待阶段六） |
-| 五 | UI 打磨 + 动效 + 暗色主题 + 性能优化 | ⏳ |
-| 六 | 阿里云生产部署：docker-compose + Nginx + coturn + SSL | ⏳ |
+| 四 | 音视频通话：WebRTC 信令 + TURN 降级 | ✅（TURN 阶段六已配 coturn） |
+| 五 | UI 打磨 + 动效 + 暗色主题 + 性能优化 | ✅ |
+| 六 | 阿里云生产部署：docker-compose + Nginx + coturn + SSL | ✅（配置就绪，待在服务器执行） |
 | 七 | 合规与运维：内容审核、实名、备份、监控 | ⏳ |
 
 详细技术方案见根目录 `prompt-社交网站-DeepSeek.md`。

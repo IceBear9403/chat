@@ -29,6 +29,8 @@ export function startRing(): void {
   }
   try {
     ctx = new CtxCls()
+    // 非用户手势中创建时 AudioContext 处于 suspended，需 resume 才有声（呼出在点击内可直接恢复）
+    ctx.resume().catch(() => {})
     beep()
     timer = window.setInterval(beep, 1000)
   } catch {
