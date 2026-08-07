@@ -61,7 +61,7 @@ async function onLogout() {
           <van-switch v-model="themeStore.isDark" size="22" @change="themeStore.toggle" />
         </template>
       </van-cell>
-      <van-cell title="版本" value="v0.1.0（阶段一）" />
+      <van-cell title="版本" value="v0.5.0（阶段五）" />
     </van-cell-group>
 
     <div class="logout-wrap">

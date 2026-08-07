@@ -296,7 +296,7 @@ function startCall(type: number) {
             </template>
           </van-image>
           <div class="img-wrap">
-            <van-image :src="m.content" width="160" :height="m.content ? undefined : 120" fit="cover" class="chat-img" @click="onPreviewImage(m.content)" />
+            <van-image :src="m.content" width="160" :height="m.content ? undefined : 120" fit="cover" lazy-load class="chat-img" @click="onPreviewImage(m.content)" />
           </div>
           <span v-if="own(m) && m === lastOwn" class="status">{{ statusText(m) }}</span>
         </div>
@@ -419,12 +419,13 @@ function startCall(type: number) {
 
 .msg-item {
   margin-bottom: 14px;
+  animation: msg-in 0.28s ease-out both;
 }
 
 .msg-time {
   text-align: center;
   font-size: 11px;
-  color: #999;
+  color: var(--text-secondary);
   margin-bottom: 10px;
 }
 
@@ -492,7 +493,7 @@ function startCall(type: number) {
 .status {
   align-self: flex-end;
   font-size: 11px;
-  color: #999;
+  color: var(--text-secondary);
   flex-shrink: 0;
   padding: 2px;
 }

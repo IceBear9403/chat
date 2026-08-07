@@ -63,12 +63,18 @@ const commentText = ref('')
 const replyToId = ref<number | null>(null)
 const replyToUserId = ref<number | null>(null)
 const replyToName = ref('')
+const commentField = ref<{ focus: () => void } | null>(null)
 
 async function openComments() {
   commentOpen.value = true
   if (comments.value.length === 0) {
     await loadComments()
   }
+}
+
+/** 弹层打开后聚焦输入框（键盘自动上弹） */
+function onCommentOpened() {
+  commentField.value?.focus()
 }
 
 async function loadComments() {
@@ -232,7 +238,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
         :style="mediaStyle(m)"
         :class="moment.media.length === 1 ? '' : 'grid-cell'"
         fit="cover"
-        loading="lazy"
+        lazy-load
         @click="onPreview(i)"
       />
     </div>
@@ -279,7 +285,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
     />
 
     <!-- 评论弹层 -->
-    <van-popup v-model:show="commentOpen" position="bottom" round :style="{ height: '72vh' }">
+    <van-popup v-model:show="commentOpen" position="bottom" round :style="{ height: '72vh' }" @opened="onCommentOpened">
       <div class="sheet">
         <div class="sheet-header">
           <span class="sheet-title">评论</span>
@@ -306,6 +312,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
         </div>
         <div class="sheet-input">
           <van-field
+            ref="commentField"
             v-model="commentText"
             :placeholder="replyToName ? `回复 ${replyToName}` : '友善评论，理性发言'"
             rows="1"
@@ -349,6 +356,8 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
   border-radius: 12px;
   padding: 14px 14px 6px;
   margin: 12px 0;
+  box-shadow: var(--shadow-card);
+  animation: fade-in-up 0.32s ease-out both;
 }
 
 /* 头部 */
@@ -443,6 +452,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
   margin-top: 10px;
   border-radius: 8px;
   overflow: hidden;
+  animation: grid-pop 0.3s ease-out both;
 }
 
 .grid-cell {
@@ -454,6 +464,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
   display: block;
   width: 220px;
   max-width: 100%;
+  animation: grid-pop 0.3s ease-out both;
 }
 
 /* 操作栏 */

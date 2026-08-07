@@ -26,7 +26,7 @@ const themeVars = computed<ConfigProviderThemeVars>(() => ({
     :theme-vars="themeVars"
   >
     <router-view v-slot="{ Component }">
-      <transition name="fade" mode="out-in">
+      <transition name="page" mode="out-in">
         <component :is="Component" />
       </transition>
     </router-view>

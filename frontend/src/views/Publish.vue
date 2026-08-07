@@ -145,6 +145,11 @@ async function onSubmit() {
   margin-top: 12px;
 }
 
+/* 上传缩略图弹性展开 */
+.uploader :deep(.van-uploader__preview) {
+  animation: grid-pop 0.3s ease-out both;
+}
+
 .visibility-row {
   display: flex;
   align-items: center;

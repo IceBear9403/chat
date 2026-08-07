@@ -66,19 +66,23 @@ function onCancelOrHangup() {
 
       <!-- 语音通话 / 呼叫中（全屏暗底） -->
       <template v-else>
-        <div class="voice-bg">
-          <div class="voice-avatar">
-            <van-image
-              round
-              width="84"
-              height="84"
-              :src="callStore.peerAvatar || ''"
-              fit="cover"
-            >
-              <template #error>
-                <div class="avatar-fallback lg">{{ displayName().slice(0, 1) }}</div>
-              </template>
-            </van-image>
+        <div class="voice-bg" :class="{ shaking: callStore.status === 'incoming' }">
+          <div class="voice-avatar-wrap">
+            <!-- 呼吸灯光圈：呼出/来电等待中可见 -->
+            <span v-if="callStore.status !== 'active'" class="ring-pulse" />
+            <div class="voice-avatar">
+              <van-image
+                round
+                width="84"
+                height="84"
+                :src="callStore.peerAvatar || ''"
+                fit="cover"
+              >
+                <template #error>
+                  <div class="avatar-fallback lg">{{ displayName().slice(0, 1) }}</div>
+                </template>
+              </van-image>
+            </div>
           </div>
 
           <div class="voice-name">{{ displayName() }}</div>
@@ -160,6 +164,7 @@ function onCancelOrHangup() {
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.3);
+  animation: video-pop 0.35s ease-out both;
 }
 
 .video-top {
@@ -203,6 +208,73 @@ function onCancelOrHangup() {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* 呼吸灯光圈 */
+.voice-avatar-wrap {
+  position: relative;
+}
+
+.ring-pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  transform: translate(-50%, -50%);
+  animation: ring-pulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes ring-pulse {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.2);
+  }
+}
+
+/* 来电全屏轻微抖动 */
+.shaking {
+  animation: screen-shake 0.6s ease-in-out infinite;
+}
+
+@keyframes screen-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+
+/* 本地视频小窗弹入 */
+@keyframes video-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 操作按钮按压反馈 */
+.action-btn {
+  transition: transform 0.15s ease;
+}
+
+.action-btn:active {
+  transform: scale(0.92);
 }
 
 .voice-name {

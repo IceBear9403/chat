@@ -30,4 +30,8 @@ export const chatApi = {
 
   read: (conversationId: number): Promise<null> =>
     http.post<null, null>(`/chat/${conversationId}/read`),
+
+  /** 删除会话（软删，对方发新消息后重新可见） */
+  deleteConversation: (conversationId: number): Promise<null> =>
+    http.delete<null, null>(`/chat/${conversationId}`),
 }

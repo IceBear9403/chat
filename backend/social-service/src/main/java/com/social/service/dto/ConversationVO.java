@@ -19,4 +19,6 @@ public class ConversationVO {
     /** 对方是否在线（Redis 在线状态） */
     private Boolean peerOnline;
     private LocalDateTime lastMessageTime;
+    /** 我是否已删除该会话 */
+    private Boolean deleted;
 }

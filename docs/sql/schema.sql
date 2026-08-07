@@ -164,6 +164,8 @@ CREATE TABLE IF NOT EXISTS `conversation` (
     `last_message_id`    BIGINT UNSIGNED DEFAULT NULL,
     `last_message_time`  DATETIME        DEFAULT NULL,
     `last_message_preview` VARCHAR(100)  DEFAULT NULL COMMENT '会话列表预览',
+    `deleted_a`          DATETIME        DEFAULT NULL COMMENT 'A方删除时间, NULL=未删;对方发新消息后重新可见',
+    `deleted_b`          DATETIME        DEFAULT NULL COMMENT 'B方删除时间, NULL=未删;对方发新消息后重新可见',
     `created_at`         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

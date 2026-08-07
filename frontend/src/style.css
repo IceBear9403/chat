@@ -12,6 +12,8 @@
   --border: #ebedf0;
   --tabbar-bg: #ffffff;
   --overlay: rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.1);
   color-scheme: light;
 }
 
@@ -23,6 +25,8 @@
   --border: #262b33;
   --tabbar-bg: #171b22;
   --overlay: rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-card-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
 }
 
@@ -49,7 +53,7 @@ body {
   min-height: 100vh;
 }
 
-/* 页面通用容器（底部留出 TabBar 高度） */
+/* 页面通用容器（底部留出 TabBar 高度）；桌面端收窄居中 */
 .page-container {
   min-height: 100vh;
   padding: 0 16px calc(56px + env(safe-area-inset-bottom));
@@ -71,23 +75,87 @@ body {
   border-radius: 12px;
   margin: 12px 0;
   padding: 16px;
+  box-shadow: var(--shadow-card);
 }
 
 .text-secondary {
   color: var(--text-secondary);
 }
 
-/* 简单淡入动画（页面过渡） */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
+/* =============================================================
+ * 页面过渡：滑动淡入（250-300ms ease-out）
+ * ============================================================= */
+.page-enter-active {
+  transition: opacity 0.28s ease, transform 0.28s ease;
 }
 
-.fade-enter-from {
+.page-enter-from {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(12px);
 }
 
-.fade-leave-to {
+/* 离开时不位移（避免视觉跳跃，只淡出） */
+.page-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.page-leave-to {
   opacity: 0;
+}
+
+/* =============================================================
+ * 通用微动效
+ * ============================================================= */
+/* 卡片/条目自下而上弹入 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 九宫格图片弹性展开 */
+@keyframes grid-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 消息气泡弹入 */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 桌面端：H5 容器居中，两侧留白 */
+@media (min-width: 768px) {
+  #app {
+    max-width: 520px;
+    margin: 0 auto;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+    min-height: 100vh;
+  }
+
+  body {
+    background: #e8ebef;
+  }
+
+  [data-theme='dark'] body {
+    background: #080b0f;
+  }
 }
