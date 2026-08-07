@@ -235,6 +235,11 @@ export const useCallStore = defineStore('call', {
     },
 
     async handleInvite(sig: CallSignalVO) {
+      // 防御：忽略发给自己的回显/残留 invite（正常不会出现；避免自拒接导致"对方拒听"）
+      const meId = useUserStore().userInfo?.id ?? 0
+      if (sig.callerId === meId) {
+        return
+      }
       // 已在通话中：防御性拒绝（正常由服务端 busy 拦截）
       if (this.status !== 'idle') {
         publishSignal({ action: 'reject', callId: sig.callId ?? '', to: sig.callerId ?? 0 })

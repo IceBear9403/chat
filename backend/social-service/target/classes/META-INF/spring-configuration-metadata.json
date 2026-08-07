@@ -8,26 +8,22 @@
     {
       "name": "app.jwt",
       "type": "com.social.service.config.AppProperties$Jwt",
-      "sourceType": "com.social.service.config.AppProperties",
-      "sourceMethod": "public com.social.service.config.AppProperties.Jwt getJwt() "
+      "sourceType": "com.social.service.config.AppProperties"
     },
     {
       "name": "app.storage",
       "type": "com.social.service.config.AppProperties$Storage",
-      "sourceType": "com.social.service.config.AppProperties",
-      "sourceMethod": "public com.social.service.config.AppProperties.Storage getStorage() "
+      "sourceType": "com.social.service.config.AppProperties"
     },
     {
       "name": "app.verify-code",
       "type": "com.social.service.config.AppProperties$VerifyCode",
-      "sourceType": "com.social.service.config.AppProperties",
-      "sourceMethod": "public com.social.service.config.AppProperties.VerifyCode getVerifyCode() "
+      "sourceType": "com.social.service.config.AppProperties"
     },
     {
       "name": "app.webrtc",
       "type": "com.social.service.config.AppProperties$Webrtc",
-      "sourceType": "com.social.service.config.AppProperties",
-      "sourceMethod": "public com.social.service.config.AppProperties.Webrtc getWebrtc() "
+      "sourceType": "com.social.service.config.AppProperties"
     }
   ],
   "properties": [
@@ -35,7 +31,8 @@
       "name": "app.jwt.access-expire-seconds",
       "type": "java.lang.Long",
       "description": "access token 有效期（秒），默认 2h",
-      "sourceType": "com.social.service.config.AppProperties$Jwt"
+      "sourceType": "com.social.service.config.AppProperties$Jwt",
+      "defaultValue": 7200
     },
     {
       "name": "app.jwt.access-secret",
@@ -47,7 +44,8 @@
       "name": "app.jwt.refresh-expire-seconds",
       "type": "java.lang.Long",
       "description": "refresh token 有效期（秒），默认 7d",
-      "sourceType": "com.social.service.config.AppProperties$Jwt"
+      "sourceType": "com.social.service.config.AppProperties$Jwt",
+      "defaultValue": 604800
     },
     {
       "name": "app.jwt.refresh-secret",
@@ -59,42 +57,49 @@
       "name": "app.storage.local-path",
       "type": "java.lang.String",
       "description": "本地文件存储根目录（相对启动目录）。生产切 OSS 后可忽略",
-      "sourceType": "com.social.service.config.AppProperties$Storage"
+      "sourceType": "com.social.service.config.AppProperties$Storage",
+      "defaultValue": ".\/uploads"
     },
     {
       "name": "app.storage.max-file-size-mb",
       "type": "java.lang.Long",
       "description": "单个文件大小上限（MB）",
-      "sourceType": "com.social.service.config.AppProperties$Storage"
+      "sourceType": "com.social.service.config.AppProperties$Storage",
+      "defaultValue": 20
     },
     {
       "name": "app.verify-code.expire-seconds",
       "type": "java.lang.Long",
       "description": "验证码有效期（秒），默认 5min",
-      "sourceType": "com.social.service.config.AppProperties$VerifyCode"
+      "sourceType": "com.social.service.config.AppProperties$VerifyCode",
+      "defaultValue": 300
     },
     {
       "name": "app.verify-code.mock-code",
       "type": "java.lang.String",
       "description": "mock 验证码",
-      "sourceType": "com.social.service.config.AppProperties$VerifyCode"
+      "sourceType": "com.social.service.config.AppProperties$VerifyCode",
+      "defaultValue": "123456"
     },
     {
       "name": "app.verify-code.mock-enabled",
       "type": "java.lang.Boolean",
       "description": "开发阶段 mock 开关：开启后使用固定验证码，不真正发短信",
-      "sourceType": "com.social.service.config.AppProperties$VerifyCode"
+      "sourceType": "com.social.service.config.AppProperties$VerifyCode",
+      "defaultValue": true
     },
     {
       "name": "app.verify-code.sms-sign-name",
       "type": "java.lang.String",
       "description": "短信模板签名（接入阿里云短信后使用）",
-      "sourceType": "com.social.service.config.AppProperties$VerifyCode"
+      "sourceType": "com.social.service.config.AppProperties$VerifyCode",
+      "defaultValue": ""
     },
     {
       "name": "app.verify-code.sms-template-code",
       "type": "java.lang.String",
-      "sourceType": "com.social.service.config.AppProperties$VerifyCode"
+      "sourceType": "com.social.service.config.AppProperties$VerifyCode",
+      "defaultValue": ""
     },
     {
       "name": "app.webrtc.ice-servers",

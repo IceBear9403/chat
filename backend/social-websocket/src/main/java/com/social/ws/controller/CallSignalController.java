@@ -76,13 +76,8 @@ public class CallSignalController {
         fillPeer(toCallee, callerId);
         push(calleeId, toCallee);
 
-        // 回执主叫（携带服务端确定的 callId，供后续 offer/end 使用）
-        CallSignalVO toCaller = base(sig, CallSignalVO.ACTION_INVITE);
-        toCaller.setCallId(callId);
-        toCaller.setCallType(sig.getCallType());
-        toCaller.setCallerId(callerId);
-        toCaller.setCalleeId(calleeId);
-        push(callerId, toCaller);
+        // 注意：不向主叫回执 invite——前端以本地生成的 callId 为准，回执会触发
+        // 前端 handleInvite 的忙碌防御逻辑（主叫状态非 idle）导致误拒接，显示"对方拒听"。
         log.info("邀请已转发 callId={} caller={} callee={} type={}", callId, callerId, calleeId, sig.getCallType());
     }
 
