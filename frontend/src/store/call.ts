@@ -5,6 +5,7 @@ import type { CallSignalVO, UserVO } from '@/types'
 import { isConnected, publishSignal } from '@/utils/stomp'
 import { useUserStore } from '@/store/user'
 import { startRing, stopRing } from '@/utils/ringtone'
+import { uuid } from '@/utils/uuid'
 
 /**
  * 通话（WebRTC）状态机。
@@ -88,7 +89,7 @@ export const useCallStore = defineStore('call', {
       const meId = useUserStore().userInfo?.id ?? 0
       this.status = 'outgoing'
       this.callType = type
-      this.callId = crypto.randomUUID().replace(/-/g, '')
+      this.callId = uuid().replace(/-/g, '')
       this.callerId = meId
       this.calleeId = peer.id
       this.peerId = peer.id
@@ -97,9 +98,9 @@ export const useCallStore = defineStore('call', {
       startRing()
       try {
         await this.setupPeerConnection()
-      } catch {
+      } catch (e) {
         this.cleanup()
-        showToast('无法获取麦克风/摄像头权限')
+        showToast((e as Error).message || '无法获取麦克风/摄像头权限')
         return
       }
       publishSignal({
@@ -117,10 +118,10 @@ export const useCallStore = defineStore('call', {
       }
       try {
         await this.setupPeerConnection()
-      } catch {
+      } catch (e) {
         publishSignal({ action: 'reject', callId: this.callId, to: this.callerId })
         this.cleanup()
-        showToast('无法获取麦克风/摄像头权限')
+        showToast((e as Error).message || '无法获取麦克风/摄像头权限')
         return
       }
       stopRing()
@@ -149,6 +150,9 @@ export const useCallStore = defineStore('call', {
 
     /** 建 RTCPeerConnection + 采集媒体（主叫发起时 / 被叫接听时）。 */
     async setupPeerConnection() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('当前环境不支持音视频（需 HTTPS 或 localhost）')
+      }
       await this.loadIceServers()
       const pc = new RTCPeerConnection({ iceServers: this.iceServers })
       pc.onicecandidate = (e) => {

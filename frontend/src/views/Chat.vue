@@ -9,6 +9,7 @@ import { useCallStore } from '@/store/call'
 import { useUserStore } from '@/store/user'
 import type { ConversationVO, MessageVO } from '@/types'
 import { formatTime } from '@/utils/format'
+import { uuid } from '@/utils/uuid'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,7 +122,7 @@ async function sendText() {
   if (!text || sending.value) return
   input.value = ''
   sending.value = true
-  const clientMsgId = crypto.randomUUID()
+  const clientMsgId = uuid()
   messages.value.push(makeTemp(text, 1, clientMsgId))
   scrollToBottom()
   try {
@@ -155,7 +156,7 @@ async function onFileChange(e: Event) {
     return
   }
   uploading.value = true
-  const clientMsgId = crypto.randomUUID()
+  const clientMsgId = uuid()
   try {
     const res = await uploadFile(file, 'chat')
     messages.value.push(makeTemp(res.url, 2, clientMsgId))

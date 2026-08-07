@@ -2,7 +2,11 @@
  * 来电/呼出铃声（Web Audio 合成，避免引入音频资源文件）。
  * 每 1s 循环一段短音；静音开关由调用方控制。
  */
-let ctx: AudioContext | null = null
+type AnyCtx = AudioContext
+// 部分 WebView 暴露 webkitAudioContext
+const CtxCls: typeof AudioContext | undefined =
+  window.AudioContext ?? (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+let ctx: AnyCtx | null = null
 let timer: number | null = null
 
 function beep() {
@@ -20,8 +24,11 @@ function beep() {
 
 export function startRing(): void {
   stopRing()
+  if (!CtxCls) {
+    return
+  }
   try {
-    ctx = new AudioContext()
+    ctx = new CtxCls()
     beep()
     timer = window.setInterval(beep, 1000)
   } catch {
