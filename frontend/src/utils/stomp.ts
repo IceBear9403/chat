@@ -76,13 +76,27 @@ export function connectChat(opts: {
       onConnectHandler?.()
     },
     onDisconnect: () => {
+      // 优雅断开（DISCONNECT/登出）
+      subscribed = false
       onDisconnectHandler?.()
     },
+    onWebSocketClose: () => {
+      // 关键：意外断线（网络抖动 / 服务端重启）只触发 onWebSocketClose，不触发 onDisconnect。
+      // STOMP 会话独立，重连必须重建 SUBSCRIBE；不复位标记会导致连接"看似在线"
+      // 却收不到任何 /user/queue/* 推送（表现为"接通后主叫还在拨号界面""收不到邀请"）。
+      subscribed = false
+    },
     onStompError: () => {
-      // token 失效等错误：断开后靠重连重新握手；token 由 http 拦截器刷新
+      // 协议层错误：重置订阅标记并断开，稍后带最新 token 重建连接（token 由 http 拦截器静默刷新）
+      subscribed = false
       client?.deactivate()
       client = null
-      subscribed = false
+      window.setTimeout(() => {
+        const token = getAccessToken()
+        if (token) {
+          connectChat({})
+        }
+      }, 3000)
     },
   })
   client.activate()
