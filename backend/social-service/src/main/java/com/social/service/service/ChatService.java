@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -82,13 +84,14 @@ public class ChatService {
         message.setStatus(Message.STATUS_SENT);
         messageMapper.insert(message);
 
-        // 更新会话最后一条消息
-        Conversation update = new Conversation();
-        update.setId(conversation.getId());
-        update.setLastMessageId(message.getId());
-        update.setLastMessageTime(message.getCreatedAt());
-        update.setLastMessagePreview(previewOf(message));
-        conversationMapper.updateById(update);
+        // 更新会话最后一条消息；收到新消息时清除双方删除标记（会话重新可见）
+        conversationMapper.update(null, new LambdaUpdateWrapper<Conversation>()
+                .eq(Conversation::getId, conversation.getId())
+                .set(Conversation::getLastMessageId, message.getId())
+                .set(Conversation::getLastMessageTime, message.getCreatedAt())
+                .set(Conversation::getLastMessagePreview, previewOf(message))
+                .set(Conversation::getDeletedA, null)
+                .set(Conversation::getDeletedB, null));
 
         MessageVO vo = toVO(message);
         long senderUnread = unreadCount(conversation.getId(), senderId);
@@ -123,7 +126,7 @@ public class ChatService {
         }
     }
 
-    /** 会话列表（按最后消息时间倒序），含对端信息、未读数、在线状态。 */
+    /** 会话列表（按最后消息时间倒序），含对端信息、未读数、在线状态。过滤「已删除且无新消息」的会话。 */
     public List<ConversationVO> conversationList(Long userId) {
         List<Conversation> list = conversationMapper.selectList(new LambdaQueryWrapper<Conversation>()
                 .and(w -> w.eq(Conversation::getUserA, userId)
@@ -135,6 +138,13 @@ public class ChatService {
         List<ConversationVO> result = new ArrayList<>();
         for (Conversation c : list) {
             Long peerId = c.getUserA().equals(userId) ? c.getUserB() : c.getUserA();
+            // 我方删除时间：删除后对方又发新消息（last_message_time > deleted_at）则重新可见
+            LocalDateTime deletedAt = userId.equals(c.getUserA()) ? c.getDeletedA() : c.getDeletedB();
+            if (deletedAt != null
+                    && (c.getLastMessageTime() == null
+                    || !c.getLastMessageTime().isAfter(deletedAt))) {
+                continue;
+            }
             ConversationVO vo = new ConversationVO();
             vo.setId(c.getId());
             vo.setPeerId(peerId);
@@ -148,11 +158,26 @@ public class ChatService {
             vo.setUnreadCount(unreadCount(c.getId(), userId));
             vo.setPeerOnline(presenceService.online(peerId));
             vo.setLastMessageTime(c.getLastMessageTime());
+            vo.setDeleted(deletedAt != null);
             if (vo.getPeer() != null) {
                 result.add(vo);
             }
         }
         return result;
+    }
+
+    /** 软删会话：记录本用户删除时间（上海墙钟）。删除后对方发新消息会重新出现在列表。 */
+    @Transactional
+    public void deleteConversation(Long userId, Long conversationId) {
+        Conversation c = getMemberConversation(userId, conversationId);
+        // 与 DB serverTimezone=Asia/Shanghai 保持一致，避免 JVM 默认时区导致比较错位
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Shanghai"));
+        if (userId.equals(c.getUserA())) {
+            c.setDeletedA(now);
+        } else {
+            c.setDeletedB(now);
+        }
+        conversationMapper.updateById(c);
     }
 
     /** 打开（获取或创建）与某用户的会话，返回会话详情。 */

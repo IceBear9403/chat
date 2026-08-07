@@ -23,7 +23,7 @@ onMounted(() => {
 <template>
   <div class="main-layout">
     <router-view v-slot="{ Component }">
-      <transition name="fade" mode="out-in">
+      <transition name="page" mode="out-in">
         <keep-alive include="HomeView">
           <component :is="Component" :key="route.fullPath" />
         </keep-alive>

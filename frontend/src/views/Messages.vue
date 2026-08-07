@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showConfirmDialog, showToast } from 'vant'
 import { chatApi } from '@/api/chat'
 import { userApi } from '@/api/user'
 import { useChatStore } from '@/store/chat'
@@ -37,6 +37,22 @@ function openChat(conv: ConversationVO) {
     path: `/chat/${conv.id}`,
     query: { peerId: conv.peerId },
   })
+}
+
+// ---------- 滑动删除 ----------
+async function onDeleteConv(conv: ConversationVO) {
+  try {
+    await showConfirmDialog({ title: '删除会话', message: `删除与 ${conv.peer.nickname} 的会话？` })
+  } catch {
+    return
+  }
+  try {
+    await chatApi.deleteConversation(conv.id)
+    chatStore.conversations = chatStore.conversations.filter((c) => c.id !== conv.id)
+    showToast('已删除')
+  } catch (e) {
+    showToast((e as Error).message)
+  }
 }
 
 // ---------- 发起新会话：搜索用户 ----------
@@ -92,7 +108,7 @@ async function startChat(user: UserVO) {
     </div>
 
     <div v-if="!chatStore.connected" class="conn-tip">
-      <van-loading size="14" color="#999" /> 连接中...
+      <van-loading size="14" color="var(--text-secondary)" /> 连接中...
     </div>
 
     <van-pull-refresh v-model="loading" @refresh="onRefresh">
@@ -105,32 +121,35 @@ async function startChat(user: UserVO) {
       </div>
 
       <div class="conv-list">
-        <div
-          v-for="conv in chatStore.conversations"
-          :key="conv.id"
-          class="conv-item"
-          @click="openChat(conv)"
-        >
-          <div class="conv-avatar">
-            <van-image round width="46" height="46" :src="conv.peer.avatar || ''" fit="cover">
-              <template #error>
-                <div class="avatar-fallback">{{ conv.peer.nickname?.slice(0, 1) }}</div>
-              </template>
-            </van-image>
-            <span v-if="conv.peerOnline" class="online-dot" />
-          </div>
+        <van-swipe-cell v-for="conv in chatStore.conversations" :key="conv.id">
+          <div class="conv-item" @click="openChat(conv)">
+            <div class="conv-avatar">
+              <van-image round width="46" height="46" :src="conv.peer.avatar || ''" fit="cover" lazy-load>
+                <template #error>
+                  <div class="avatar-fallback">{{ conv.peer.nickname?.slice(0, 1) }}</div>
+                </template>
+              </van-image>
+              <span v-if="conv.peerOnline" class="online-dot" />
+            </div>
 
-          <div class="conv-body">
-            <div class="conv-row">
-              <span class="conv-nickname">{{ conv.peer.nickname }}</span>
-              <span class="conv-time text-secondary">{{ formatTime(conv.lastMessageTime || conv.lastMessage?.createdAt || '') }}</span>
-            </div>
-            <div class="conv-row">
-              <span class="conv-preview text-secondary">{{ previewOf(conv) }}</span>
-              <van-badge v-if="conv.unreadCount > 0" :content="conv.unreadCount > 99 ? '99+' : conv.unreadCount" />
+            <div class="conv-body">
+              <div class="conv-row">
+                <span class="conv-nickname">{{ conv.peer.nickname }}</span>
+                <span class="conv-time text-secondary">{{ formatTime(conv.lastMessageTime || conv.lastMessage?.createdAt || '') }}</span>
+              </div>
+              <div class="conv-row">
+                <span class="conv-preview text-secondary">{{ previewOf(conv) }}</span>
+                <van-badge v-if="conv.unreadCount > 0" :content="conv.unreadCount > 99 ? '99+' : conv.unreadCount" />
+              </div>
             </div>
           </div>
-        </div>
+          <template #right>
+            <div class="swipe-delete" @click="onDeleteConv(conv)">
+              <van-icon name="delete-o" size="20" />
+              <span>删除</span>
+            </div>
+          </template>
+        </van-swipe-cell>
       </div>
     </van-pull-refresh>
 
@@ -159,7 +178,7 @@ async function startChat(user: UserVO) {
             class="result-item"
             @click="startChat(u)"
           >
-            <van-image round width="40" height="40" :src="u.avatar || ''" fit="cover">
+            <van-image round width="40" height="40" :src="u.avatar || ''" fit="cover" lazy-load>
               <template #error>
                 <div class="avatar-fallback small">{{ u.nickname?.slice(0, 1) }}</div>
               </template>
@@ -196,7 +215,7 @@ async function startChat(user: UserVO) {
   justify-content: center;
   gap: 6px;
   font-size: 12px;
-  color: #999;
+  color: var(--text-secondary);
   padding: 6px 0;
 }
 
@@ -252,6 +271,24 @@ async function startChat(user: UserVO) {
   border-radius: 50%;
   background: #07c160;
   border: 2px solid var(--bg);
+}
+
+.swipe-delete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 72px;
+  height: 100%;
+  background: #ee0a24;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.swipe-delete:active {
+  background: #c5081e;
 }
 
 .conv-body {

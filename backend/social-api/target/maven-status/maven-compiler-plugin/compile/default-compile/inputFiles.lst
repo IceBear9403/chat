@@ -15,6 +15,7 @@
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/dto/request/RegisterRequest.java
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/config/WebConfig.java
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/config/OpenApiConfig.java
+/Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/config/CorsConfig.java
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/exception/GlobalExceptionHandler.java
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/controller/ChatController.java
 /Volumes/secret/work/program/chat/backend/social-api/src/main/java/com/social/api/controller/MomentController.java

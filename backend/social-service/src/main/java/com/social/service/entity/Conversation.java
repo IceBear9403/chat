@@ -33,6 +33,12 @@ public class Conversation {
     /** 会话列表预览（文本截断 / 资源类型描述） */
     private String lastMessagePreview;
 
+    /** A 方删除时间（上海墙钟，与服务端 DATETIME 同基准），NULL=未删；删除后对方发新消息会重新可见 */
+    private LocalDateTime deletedA;
+
+    /** B 方删除时间（上海墙钟，与服务端 DATETIME 同基准），NULL=未删；删除后对方发新消息会重新可见 */
+    private LocalDateTime deletedB;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
