@@ -1,0 +1,4 @@
+com/social/ws/config/WebSocketConfig.class
+com/social/ws/controller/StompEchoController.class
+com/social/ws/auth/UserIdHandshakeHandler.class
+com/social/ws/auth/StompAuthHandshakeInterceptor.class

@@ -1,0 +1,60 @@
+# 公共配置（各环境通过 spring.profiles.active 切换，见 application-dev.yml / application-prod.yml）
+server:
+  port: 18081
+  # 置于 Nginx 等反向代理之后时，保证 X-Forwarded-* 生效
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: social
+  profiles:
+    active: dev
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  jwt:
+    # 生产环境务必通过环境变量覆盖（阶段六）
+    access-secret: ${JWT_ACCESS_SECRET:change-me-access-secret-please-32chars-min}
+    access-expire-seconds: 7200
+    refresh-secret: ${JWT_REFRESH_SECRET:change-me-refresh-secret-please-32chars}
+    refresh-expire-seconds: 604800
+  verify-code:
+    mock-enabled: true
+    mock-code: "123456"
+    expire-seconds: 300
+  webrtc:
+    # 阶段四先用公共 STUN，跨网 N 2 N 需 TURN；阶段六自建 coturn 后替换
+    ice-servers:
+      - urls: "stun:stun.l.google.com:19302"
+      - urls: "stun:stun1.l.google.com:19302"

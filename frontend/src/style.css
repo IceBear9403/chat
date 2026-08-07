@@ -1,0 +1,93 @@
+/* =============================================================
+ * 全局样式与主题变量（明/暗）
+ * 主色：#1e90ff（清新蓝），暗色模式通过 <html data-theme="dark"> 切换
+ * ============================================================= */
+
+:root {
+  --primary: #1e90ff;
+  --bg: #f5f6f7;
+  --card-bg: #ffffff;
+  --text: #1a1a1a;
+  --text-secondary: #8a8f99;
+  --border: #ebedf0;
+  --tabbar-bg: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.45);
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --bg: #0e1116;
+  --card-bg: #171b22;
+  --text: #e8eaed;
+  --text-secondary: #9aa0aa;
+  --border: #262b33;
+  --tabbar-bg: #171b22;
+  --overlay: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* 页面通用容器（底部留出 TabBar 高度） */
+.page-container {
+  min-height: 100vh;
+  padding: 0 16px calc(56px + env(safe-area-inset-bottom));
+}
+
+/* 页面标题栏 */
+.page-header {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 卡片 */
+.card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  margin: 12px 0;
+  padding: 16px;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+/* 简单淡入动画（页面过渡） */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
