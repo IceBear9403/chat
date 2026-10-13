@@ -33,12 +33,15 @@ public enum ErrorCode {
     VERIFY_CODE_SEND_FAILED(2001, "验证码发送失败"),
     VERIFY_CODE_INVALID(2002, "验证码错误或已过期"),
     PHONE_ALREADY_REGISTERED(2003, "该手机号已注册"),
+    EMAIL_ALREADY_REGISTERED(2011, "该邮箱已注册"),
+    MAIL_SEND_FAILED(2012, "验证码邮件发送失败"),
     USER_NOT_EXIST(2004, "用户不存在"),
     PASSWORD_ERROR(2005, "手机号或密码错误"),
     TOKEN_INVALID(2006, "令牌无效"),
     TOKEN_EXPIRED(2007, "令牌已过期"),
     REFRESH_TOKEN_INVALID(2008, "刷新令牌无效，请重新登录"),
     NICKNAME_ILLEGAL(2009, "昵称包含非法字符"),
+    NICKNAME_CHANGE_TOO_FREQUENT(2013, "昵称修改过于频繁"),
     USER_STATUS_FORBIDDEN(2010, "账号已被封禁"),
 
     // ---------- 朋友圈 / 内容 3xxx ----------

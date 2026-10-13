@@ -11,6 +11,7 @@ import com.social.service.dto.MomentCommentVO;
 import com.social.service.dto.MomentDetailVO;
 import com.social.service.dto.MomentMediaVO;
 import com.social.service.dto.MomentVO;
+import com.social.service.config.SensitiveWordFilter;
 import com.social.service.entity.Moment;
 import com.social.service.entity.MomentComment;
 import com.social.service.entity.MomentLike;
@@ -67,6 +68,8 @@ public class MomentService {
     private final MomentRepostMapper momentRepostMapper;
     private final UserRelationMapper userRelationMapper;
     private final UserProfileMapper userProfileMapper;
+    private final SensitiveWordFilter sensitiveWordFilter;
+    private final ReportService reportService;
 
     // ==================== 发布 ====================
 
@@ -100,7 +103,9 @@ public class MomentService {
         moment.setContent(text);
         moment.setType(momentType);
         moment.setVisibility(vis);
-        moment.setStatus(Moment.STATUS_PUBLISHED); // TODO(阶段七合规): 接入内容审核后改为先审后发
+        // 阶段七合规：敏感词命中 → 待审核（先发后审，仅作者可见，管理端放行/删除）
+        moment.setStatus(sensitiveWordFilter.contains(text)
+                ? Moment.STATUS_PENDING : Moment.STATUS_PUBLISHED);
         moment.setLikeCount(0);
         moment.setCommentCount(0);
         moment.setRepostCount(0);
@@ -176,11 +181,11 @@ public class MomentService {
         return vo;
     }
 
-    /** 我发布的动态（个人主页用）。 */
+    /** 我发布的动态（个人主页用）。含待审核/未通过，作者可看到自己的审核状态。 */
     public FeedPageVO myMoments(Long viewerId, LocalDateTime cursorTime, Long cursorId, int size) {
         int pageSize = Math.min(Math.max(size <= 0 ? DEFAULT_PAGE_SIZE : size, 1), MAX_PAGE_SIZE);
         LambdaQueryWrapper<Moment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Moment::getStatus, Moment.STATUS_PUBLISHED)
+        wrapper.in(Moment::getStatus, Moment.STATUS_PUBLISHED, Moment.STATUS_PENDING, Moment.STATUS_REJECTED)
                 .eq(Moment::getUserId, viewerId);
         applyCursor(wrapper, cursorTime, cursorId, pageSize + 1);
         List<Moment> moments = momentMapper.selectList(wrapper);
@@ -237,6 +242,10 @@ public class MomentService {
         }
         if (content.trim().length() > MAX_COMMENT_LENGTH) {
             throw new BusinessException(ErrorCode.PARAM_ERROR, "评论最长 " + MAX_COMMENT_LENGTH + " 字");
+        }
+        // 阶段七合规：评论命中敏感词直接拦截
+        if (sensitiveWordFilter.contains(content)) {
+            throw new BusinessException(ErrorCode.MOMENT_AUDIT_FAILED, "评论包含敏感词，请修改后重试");
         }
 
         Long replyToUserId = replyTo;
@@ -330,13 +339,16 @@ public class MomentService {
         repost.setContent(content == null ? null : content.trim());
         momentRepostMapper.insert(repost);
 
+        String repostText = content == null ? null : content.trim();
         Moment moment = new Moment();
         moment.setUserId(userId);
-        moment.setContent(content == null ? null : content.trim());
+        moment.setContent(repostText);
         moment.setType(Moment.TYPE_REPOST);
         moment.setVisibility(visibility);
         moment.setRepostFrom(repostFrom);
-        moment.setStatus(Moment.STATUS_PUBLISHED);
+        // 阶段七合规：转发语同样走敏感词审核
+        moment.setStatus(sensitiveWordFilter.contains(repostText)
+                ? Moment.STATUS_PENDING : Moment.STATUS_PUBLISHED);
         moment.setLikeCount(0);
         moment.setCommentCount(0);
         moment.setRepostCount(0);
@@ -367,10 +379,10 @@ public class MomentService {
         momentMapper.updateById(moment);
     }
 
-    /** 举报：TODO(阶段七合规) 接入内容审核/举报受理，当前仅记录日志。 */
-    public void report(Long userId, Long momentId) {
+    /** 举报动态（阶段七合规：落库受理，管理端处理）。 */
+    public void report(Long userId, Long momentId, String reason) {
         getViewableMoment(userId, momentId);
-        log.info("用户 {} 举报动态 {}", userId, momentId);
+        reportService.report(userId, momentId, reason);
     }
 
     // ==================== 装配 ====================
@@ -411,6 +423,7 @@ public class MomentService {
         vo.setType(moment.getType());
         vo.setContent(moment.getContent());
         vo.setVisibility(moment.getVisibility());
+        vo.setStatus(moment.getStatus());
         vo.setLikeCount(moment.getLikeCount());
         vo.setCommentCount(moment.getCommentCount());
         vo.setRepostCount(moment.getRepostCount());
@@ -587,7 +600,12 @@ public class MomentService {
 
     private Moment getViewableMoment(Long viewerId, Long momentId) {
         Moment moment = momentMapper.selectById(momentId);
-        if (moment == null || moment.getStatus() != Moment.STATUS_PUBLISHED) {
+        if (moment == null || moment.getStatus() == Moment.STATUS_DELETED) {
+            throw new BusinessException(ErrorCode.MOMENT_NOT_EXIST);
+        }
+        boolean isOwner = viewerId != null && viewerId.equals(moment.getUserId());
+        // 待审核/未通过的动态仅作者可见（"仅自己可见"），他人视为不存在
+        if (moment.getStatus() != Moment.STATUS_PUBLISHED && !isOwner) {
             throw new BusinessException(ErrorCode.MOMENT_NOT_EXIST);
         }
         if (!canView(moment, viewerId)) {

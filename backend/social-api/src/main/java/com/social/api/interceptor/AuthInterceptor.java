@@ -1,5 +1,6 @@
 package com.social.api.interceptor;
 
+import com.social.common.constant.RedisKeys;
 import com.social.common.context.UserContext;
 import com.social.common.enums.ErrorCode;
 import com.social.common.exception.BusinessException;
@@ -9,6 +10,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -26,6 +28,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     public static final String TOKEN_PREFIX = "Bearer ";
 
     private final AppProperties properties;
+    private final StringRedisTemplate redis;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -34,14 +37,20 @@ public class AuthInterceptor implements HandlerInterceptor {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "请先登录");
         }
         String token = header.substring(TOKEN_PREFIX.length()).trim();
+        Long userId;
         try {
             Claims claims = JwtUtil.parse(token, properties.getJwt().getAccessSecret());
-            UserContext.setUserId(JwtUtil.getUserId(claims));
+            userId = JwtUtil.getUserId(claims);
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
             throw new BusinessException(ErrorCode.TOKEN_EXPIRED, "登录已过期，请重新登录");
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.TOKEN_INVALID, "无效的登录令牌");
         }
+        // 封禁检查：管理员封禁后写入 Redis 封禁标记，使已登录会话立即失效
+        if (Boolean.TRUE.equals(redis.hasKey(RedisKeys.userBanKey(userId)))) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "账号已被封禁");
+        }
+        UserContext.setUserId(userId);
         return true;
     }
 

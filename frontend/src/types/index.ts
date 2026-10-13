@@ -12,21 +12,31 @@ export interface TokenVO {
   accessExpiresIn: number
 }
 
-/** 用户信息（手机号已脱敏） */
+/** 用户信息（手机号/邮箱已脱敏；邮箱模式用户 phone 为空，手机模式用户 email 为空） */
 export interface UserVO {
   id: number
   phone: string
+  email?: string
   nickname: string
   avatar: string | null
   signature: string | null
   gender: number
   region: string | null
+  /** 是否管理员（阶段七） */
+  isAdmin: boolean
+  /** 实名状态：0 未实名，1 已实名 */
+  realnameStatus: number
 }
 
 /** 登录/注册返回 */
 export interface LoginVO {
   token: TokenVO
   user: UserVO
+}
+
+/** 认证配置：phone=手机验证，email=邮箱验证（由后端 app.auth.mode 决定） */
+export interface AuthConfigVO {
+  authMode: 'phone' | 'email'
 }
 
 /** 隐私设置 */
@@ -63,6 +73,8 @@ export interface MomentVO {
   type: number
   content: string | null
   visibility: number
+  /** 状态：0 待审核，1 已发布，2 审核不通过，3 已删除（阶段七先发后审） */
+  status?: number
   media: MomentMediaVO[]
   likeCount: number
   commentCount: number
@@ -195,4 +207,66 @@ export class ApiError extends Error {
     this.code = code
     this.name = 'ApiError'
   }
+}
+
+// ---------- 阶段七：管理端 / 合规 ----------
+
+/** 管理端通用分页（无游标，手动 LIMIT 分页） */
+export interface PageVO<T> {
+  records: T[]
+  page: number
+  size: number
+  total: number
+  hasMore: boolean
+}
+
+/** 管理端：用户列表项 */
+export interface UserAdminVO {
+  id: number
+  /** 手机号（脱敏；邮箱模式用户为空） */
+  phone: string
+  /** 邮箱（脱敏；手机模式用户为空） */
+  email?: string
+  nickname: string | null
+  avatar: string | null
+  /** 状态：0 正常，1 封禁，2 注销 */
+  status: number
+  /** 实名状态：0 未实名，1 已实名 */
+  realnameStatus: number
+  isAdmin: boolean
+  createdAt: string
+}
+
+/** 管理端：内容审核队列项 */
+export interface AuditMomentVO {
+  id: number
+  authorId: number
+  authorNickname: string | null
+  authorAvatar: string | null
+  content: string | null
+  visibility: number
+  media: MomentMediaVO[]
+  createdAt: string
+}
+
+/** 管理端：举报队列项 */
+export interface ReportAdminVO {
+  id: number
+  momentId: number
+  momentContent: string | null
+  momentAuthorNickname: string | null
+  reporterNickname: string | null
+  reason: string | null
+  handleStatus: number
+  createdAt: string
+}
+
+/** 管理端：操作日志项 */
+export interface UserLogVO {
+  id: number
+  userId: number
+  action: string
+  detail: string | null
+  ip: string | null
+  createdAt: string
 }

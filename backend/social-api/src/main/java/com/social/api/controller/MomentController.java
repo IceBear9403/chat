@@ -2,6 +2,7 @@ package com.social.api.controller;
 
 import com.social.api.dto.request.CommentRequest;
 import com.social.api.dto.request.PublishMomentRequest;
+import com.social.api.dto.request.ReportRequest;
 import com.social.api.dto.request.RepostRequest;
 import com.social.common.context.UserContext;
 import com.social.common.enums.ErrorCode;
@@ -111,8 +112,9 @@ public class MomentController {
 
     @Operation(summary = "举报动态")
     @PostMapping("/{id}/report")
-    public Result<Void> report(@PathVariable Long id) {
-        momentService.report(UserContext.getUserId(), id);
+    public Result<Void> report(@PathVariable Long id, @RequestBody(required = false) ReportRequest request) {
+        momentService.report(UserContext.getUserId(), id,
+                request == null ? null : request.getReason());
         return Result.ok();
     }
 

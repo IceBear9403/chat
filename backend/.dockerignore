@@ -1,0 +1,9 @@
+# 构建上下文精简：排除本地编译产物与 IDE/系统杂项
+target/
+**/target/
+*.log
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.git/

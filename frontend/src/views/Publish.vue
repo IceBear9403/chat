@@ -14,6 +14,10 @@ const publishing = ref(false)
 
 const fileList = ref<UploaderFileListItem[]>([])
 
+// 上传成功后记录的图片原始尺寸（url -> {width,height}），发布时随 media 提交，
+// 供前端按真实宽高比放大单图、预留布局空间。
+const dimMap = new Map<string, { width: number; height: number }>()
+
 const beforeRead: UploaderBeforeRead = (file) => {
   const files = Array.isArray(file) ? file : [file]
   for (const f of files) {
@@ -29,6 +33,23 @@ const beforeRead: UploaderBeforeRead = (file) => {
   return true
 }
 
+/** 读取图片原始宽高（读不出时返回 null，不影响发布） */
+function readImageSize(file: File): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      URL.revokeObjectURL(url)
+    }
+    img.onerror = () => {
+      resolve(null)
+      URL.revokeObjectURL(url)
+    }
+    img.src = url
+  })
+}
+
 const afterRead: UploaderAfterRead = async (item) => {
   const items = Array.isArray(item) ? item : [item]
   for (const it of items) {
@@ -36,6 +57,8 @@ const afterRead: UploaderAfterRead = async (item) => {
     try {
       const res = await uploadFile(it.file, 'moment')
       it.url = res.url
+      const size = await readImageSize(it.file)
+      if (size) dimMap.set(res.url, size)
     } catch (e) {
       showToast((e as Error).message)
     }
@@ -45,15 +68,18 @@ const afterRead: UploaderAfterRead = async (item) => {
 async function onSubmit() {
   const media: MomentMediaVO[] = fileList.value
     .filter((f) => f.url)
-    .map((f, i) => ({
-      id: 0,
-      mediaType: 1,
-      url: f.url as string,
-      thumbnailUrl: null,
-      width: null,
-      height: null,
-      sort: i,
-    }))
+    .map((f, i) => {
+      const dim = dimMap.get(f.url as string)
+      return {
+        id: 0,
+        mediaType: 1,
+        url: f.url as string,
+        thumbnailUrl: null,
+        width: dim?.width ?? null,
+        height: dim?.height ?? null,
+        sort: i,
+      }
+    })
 
   if (!content.value.trim() && media.length === 0) {
     showToast('写点什么或选张图片吧')

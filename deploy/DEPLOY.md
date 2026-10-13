@@ -45,7 +45,11 @@ vim .env     # 逐项填写
 | `CORS_ALLOWED_ORIGINS` | ✅ | `https://你的域名.com` |
 | `VERIFY_CODE_MOCK` | 默认 true | 阶段六先用 mock 验证码联调;阶段七接短信后置 false |
 | `SMS_SIGN_NAME` / `SMS_TEMPLATE_CODE` | 阶段七 | 阿里云短信 |
+| `AUTH_MODE` | 默认 `phone` | 认证模式:`phone`=手机验证,`email`=邮箱验证;手机验证代码保留,改这里切换 |
 | `TURN_URL` / `TURN_USERNAME` / `TURN_PASSWORD` | 建议 | 填了则跨 NAT 可中继;留空前端退化为公共 STUN |
+| `APP_PII_KEY` | ✅ | PII 加密密钥(≥16 字符)。**变更会导致历史密文不可解密**,务必入 KMS/密码库 |
+| `REALNAME_MOCK` | 默认 true | 实名 mock;接入阿里云实人认证后置 false |
+| `COMPLIANCE_JOB_ENABLED` | 默认 true | 合规定时任务;多实例扩展时仅主实例 true |
 
 ## 3. SSL 证书
 
@@ -87,7 +91,12 @@ cd deploy
 - [ ] `docker compose restart` 后服务自动拉起(`restart: always`)
 - [ ] 日志轮转已配(json-file 50m×5)
 - [ ] 慢查询:MySQL 开 `slow_query_log`;Redis `maxmemory` 已设
-- [ ] 监控:`docker stats` 脚本 或 ECS 云监控
+- [ ] 监控:`./deploy/monitor.sh` 全绿,并挂 cron(见 `ops.md`)
+- [ ] **阶段七合规**:执行 `docs/sql/migration_phase7_compliance.sql` 迁移
+- [ ] **阶段七合规**:`.env` 配好 `APP_PII_KEY`;`frontend/.env.production` 填 `VITE_ICP` 备案号并重新 build
+- [ ] **阶段七合规**:老用户能正常登录(手机号加密回填);管理员走通 封禁/审核/举报/日志
+
+> 合规运营、数据备份、PII 密钥管理、排障命令详见 **`deploy/ops.md`**。
 
 ### 数据库备份(建议加 cron)
 ```bash
@@ -101,3 +110,49 @@ cd deploy
 - **上传图片 404**:确认 `location /uploads/` 反代到 `app:18081`,且 app 的 `/app/uploads` 卷有写权限
 - **TURN 不通**:优先排查安全组 3478 是否放行、`external-ip` 是否填了 ECS 公网 IP、`user=...` 凭据与前端是否一致
 - **首次启动 mysql 未建表**:数据卷非空时 `/docker-entrypoint-initdb.d/` 不会执行——确认 `mysql-data` 卷是全新创建的
+
+## 8. 子路径部署:整站收敛到 `/chat`
+
+适合「一台 nginx 承载多个项目、共用同一域名靠路径区分」的场景,也是当前服务器采用的方式。
+
+访问地址 `https://<域名>/chat/`,前端页面、REST API、WebSocket、上传文件全部在 `/chat` 前缀下,
+与根路径上的其他项目互不干扰。**后端不需要任何改动**:nginx 反代时会剥掉 `/chat`,
+Spring Boot 收到的仍是 `/api/`、`/uploads/`、`/ws`,因此不用设 `context-path`。
+
+### 8.1 拓扑
+
+| 浏览器请求 | nginx 处理 | 归属 |
+|---|---|---|
+| `/chat/`、`/chat/assets/**` | `alias /usr/share/nginx/chat/` | Vite 构建产物 |
+| `/chat/api/**` | `proxy_pass http://127.0.0.1:18081/api/` | Spring Boot |
+| `/chat/uploads/**` | `proxy_pass http://127.0.0.1:18081/uploads/` | 上传文件 |
+| `/chat/ws` | `proxy_pass http://127.0.0.1:18081/ws` + Upgrade | STOMP WebSocket |
+
+### 8.2 部署步骤(主机级 nginx,非 docker)
+
+```bash
+# 1) 前端构建产物放到项目目录(/chat 前缀已由 vite base 写入产物)
+cd frontend && npm run build
+sudo mkdir -p /usr/share/nginx/chat
+sudo rm -rf /usr/share/nginx/chat/*
+sudo cp -r dist/* /usr/share/nginx/chat/
+
+# 2) 装 nginx 配置
+sudo cp deploy/nginx/chat-host.conf /etc/nginx/conf.d/chat.conf
+#   注意:把 server_name 改成实际域名;若该域名下已有 server 块,
+#   则不要新建 server,直接把文件里 6 个 location 段粘进已有的 server 块
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+后端仍按原有方式启动并监听 `127.0.0.1:18081`(docker-compose 的 `app` 服务或 systemd 均可)。
+
+### 8.3 需要 HTTPS
+
+音视频通话依赖 `getUserMedia` / `RTCPeerConnection`,浏览器只在安全上下文(HTTPS 或 localhost)
+下放行,**纯 HTTP 访问只能收发文字消息**。`chat-host.conf` 文件末尾附了 443 的配置示例。
+
+### 8.4 回滚到根路径
+
+改 `frontend/vite.config.ts` 里的 `base: '/chat/'` 为 `'/'`,重新构建即可;
+路由、axios、WebSocket 地址都由 `import.meta.env.BASE_URL` 派生,无需逐处修改。
+nginx 侧删掉 `conf.d/chat.conf` 并 reload。

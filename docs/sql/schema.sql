@@ -13,15 +13,20 @@ USE `social`;
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `user` (
     `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
-    `phone`      VARCHAR(20)     NOT NULL COMMENT '手机号（登录主凭证）',
-    `email`      VARCHAR(64)     DEFAULT NULL COMMENT '邮箱（可选）',
+    `phone`      VARCHAR(255)    DEFAULT NULL COMMENT '手机号（AES-GCM 加密存储，登录用 phone_hash 匹配；邮箱模式用户可空）',
+    `phone_hash` CHAR(64)        DEFAULT NULL COMMENT '手机号 SHA-256，登录/查重/搜索精确匹配',
+    `email`      VARCHAR(255)    DEFAULT NULL COMMENT '邮箱（AES-GCM 加密存储，登录用 email_hash 匹配；手机模式用户可空）',
+    `email_hash` CHAR(64)        DEFAULT NULL COMMENT '邮箱 SHA-256，登录/查重/搜索精确匹配',
     `password`   VARCHAR(100)    NOT NULL COMMENT 'BCrypt 哈希密码',
     `status`     TINYINT         NOT NULL DEFAULT 0 COMMENT '状态：0正常 1封禁 2注销',
+    `is_admin`   TINYINT         NOT NULL DEFAULT 0 COMMENT '是否管理员：0否 1是',
     `deleted`    TINYINT         NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
     `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_phone` (`phone`),
+    UNIQUE KEY `uk_phone_hash` (`phone_hash`),
+    UNIQUE KEY `uk_email_hash` (`email_hash`),
+    KEY `idx_phone` (`phone`(20)),
     KEY `idx_email` (`email`)
 ) ENGINE = InnoDB COMMENT = '用户账号';
 
@@ -29,15 +34,19 @@ CREATE TABLE IF NOT EXISTS `user` (
 -- 用户资料表（1:1）
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `user_profile` (
-    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `user_id`    BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-    `nickname`   VARCHAR(20)     NOT NULL COMMENT '昵称',
-    `avatar`     VARCHAR(255)    DEFAULT NULL COMMENT '头像 OSS Key/URL',
-    `signature`  VARCHAR(100)    DEFAULT NULL COMMENT '个性签名',
-    `gender`     TINYINT         NOT NULL DEFAULT 0 COMMENT '性别：0未知 1男 2女',
-    `region`     VARCHAR(50)     DEFAULT NULL COMMENT '地区',
-    `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `id`              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`         BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
+    `nickname`        VARCHAR(20)     NOT NULL COMMENT '昵称',
+    `avatar`          VARCHAR(255)    DEFAULT NULL COMMENT '头像 OSS Key/URL',
+    `signature`       VARCHAR(100)    DEFAULT NULL COMMENT '个性签名',
+    `gender`          TINYINT         NOT NULL DEFAULT 0 COMMENT '性别：0未知 1男 2女',
+    `region`          VARCHAR(50)     DEFAULT NULL COMMENT '地区',
+    `nickname_updated_at` DATETIME    DEFAULT NULL COMMENT '昵称最近一次自行修改时间（修改间隔限制用）',
+    `real_name`       VARCHAR(64)     DEFAULT NULL COMMENT '真实姓名（AES-GCM 加密存储）',
+    `id_card`         VARCHAR(128)    DEFAULT NULL COMMENT '身份证号（AES-GCM 加密存储）',
+    `realname_status` TINYINT         NOT NULL DEFAULT 0 COMMENT '实名状态：0未实名 1已实名',
+    `created_at`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_user_id` (`user_id`)
 ) ENGINE = InnoDB COMMENT = '用户资料';
@@ -211,13 +220,48 @@ CREATE TABLE IF NOT EXISTS `call_record` (
     KEY `idx_callee_time` (`callee_id`, `created_at`)
 ) ENGINE = InnoDB COMMENT = '通话记录';
 
+-- -------------------------------------------------------------
+-- 操作日志（阶段七：日志留存 180 天，定时任务清理）
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_log` (
+    `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`    BIGINT UNSIGNED NOT NULL COMMENT '操作用户ID',
+    `action`     VARCHAR(32)     NOT NULL COMMENT '动作：register/login/logout/realname/deleteAccount/ban/audit/report...',
+    `detail`     VARCHAR(255)    DEFAULT NULL COMMENT '详情',
+    `ip`         VARCHAR(64)     DEFAULT NULL COMMENT '客户端IP（X-Forwarded-For 首段）',
+    `user_agent` VARCHAR(512)    DEFAULT NULL COMMENT 'User-Agent',
+    `created_at` DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_user_time` (`user_id`, `created_at`),
+    KEY `idx_action_time` (`action`, `created_at`)
+) ENGINE = InnoDB COMMENT = '用户操作日志';
+
+-- -------------------------------------------------------------
+-- 动态举报（阶段七：举报受理 + 管理端处理）
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `report` (
+    `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `moment_id`     BIGINT UNSIGNED NOT NULL COMMENT '被举报动态ID',
+    `reporter_id`   BIGINT UNSIGNED NOT NULL COMMENT '举报人ID',
+    `reason`        VARCHAR(200)    DEFAULT NULL COMMENT '举报理由',
+    `handle_status` TINYINT         NOT NULL DEFAULT 0 COMMENT '处理状态：0待处理 1已处理',
+    `handled_by`    BIGINT UNSIGNED DEFAULT NULL COMMENT '处理人（管理员）ID',
+    `handled_at`    DATETIME        DEFAULT NULL COMMENT '处理时间',
+    `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_moment_id` (`moment_id`),
+    KEY `idx_status_time` (`handle_status`, `created_at`)
+) ENGINE = InnoDB COMMENT = '动态举报';
+
 -- =============================================================
 -- 索引设计说明
 -- -------------------------------------------------------------
--- user.phone           唯一索引：登录 / 查重，高频
+-- user.phone_hash     唯一索引：登录 / 查重 / 手机号精确匹配（手机号已加密存储）
 -- user_relation        唯一(主动,目标,类型)：好友/关注幂等
 -- moment(status,time)  信息流拉取按可见性+时间，推荐流热度排序（阶段二）
 -- moment_like          唯一(moment,user)：点赞幂等
 -- message(conv,time)   会话内按时间分页拉历史
 -- call_record.call_id  唯一：信令去重
+-- user_log(user,time)  按用户/时间查操作日志
+-- report(status,time)  管理端举报队列按待处理优先
 -- =============================================================

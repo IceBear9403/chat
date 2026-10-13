@@ -1,6 +1,8 @@
+/Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/util/PiiCrypto.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/model/Result.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/enums/ErrorCode.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/model/PageResult.java
+/Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/util/DigestUtil.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/constant/RedisKeys.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/context/UserContext.java
 /Volumes/secret/work/program/chat/backend/social-common/src/main/java/com/social/common/util/JwtUtil.java

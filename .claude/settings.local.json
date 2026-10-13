@@ -3,7 +3,9 @@
     "allow": [
       "Bash(java -version)",
       "Bash(mvn -version)",
-      "Bash(npm -v)"
+      "Bash(npm -v)",
+      "Bash(command -v nginx)",
+      "Read(//opt/homebrew/bin/**)"
     ]
   }
 }

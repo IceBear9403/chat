@@ -23,6 +23,13 @@ public final class RedisKeys {
     /** 用户资料缓存：userProfile:{userId} */
     public static final String USER_PROFILE = "userProfile:%d";
 
+    /** 用户封禁标记：ban:user:{userId}，封禁时写入使在线会话立即失效，解封清除 */
+    public static final String USER_BAN = "ban:user:%d";
+
+    public static String userBanKey(Long userId) {
+        return String.format(USER_BAN, userId);
+    }
+
     /** 验证码场景 */
     public static final String SCENE_REGISTER = "register";
     public static final String SCENE_LOGIN = "login";

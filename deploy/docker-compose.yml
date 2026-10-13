@@ -31,25 +31,45 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --default-time-zone=+08:00
+      # 阶段七运维：慢查询日志（>1s 记录），排障用
+      - --slow-query-log=1
+      - --long-query-time=1
+      - --slow-query-log-file=/var/log/mysql/slow.log
     volumes:
       - mysql-data:/var/lib/mysql
       # 首次启动自动建库建表（仅空数据卷时执行一次）
       - ../docs/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       # 阶段五软删字段迁移（幂等，重复执行无副作用）
       - ../docs/sql/migration_phase5_conversation_delete.sql:/docker-entrypoint-initdb.d/02-phase5-migration.sql:ro
+      # 阶段七合规表（phone_hash/is_admin/real_name/user_log/report）迁移，幂等
+      - ../docs/sql/migration_phase7_compliance.sql:/docker-entrypoint-initdb.d/03-phase7-migration.sql:ro
+      # 阶段八邮箱注册/登录（phone 可空/email 加宽/email_hash）迁移，幂等
+      - ../docs/sql/migration_phase8_email.sql:/docker-entrypoint-initdb.d/04-phase8-email.sql:ro
+      # 阶段九昵称管理（nickname_updated_at 修改间隔限制）迁移，幂等
+      - ../docs/sql/migration_phase9_nickname.sql:/docker-entrypoint-initdb.d/05-phase9-nickname.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 40s
-    # 不暴露宿主端口，仅内网
+    # 不暴露宿主端口，仅内网；慢查询日志查看：docker exec social-mysql tail -f /var/log/mysql/slow.log
 
   redis:
     <<: *app-common
     image: redis:7
     container_name: social-redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?请在 .env 配置 REDIS_PASSWORD}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD:?请在 .env 配置 REDIS_PASSWORD}
+      # 阶段七运维：内存上限 + LRU 淘汰，防止 OOM
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
     volumes:
       - redis-data:/data
     healthcheck:
@@ -83,10 +103,27 @@ services:
       VERIFY_CODE_MOCK: ${VERIFY_CODE_MOCK:-true}
       SMS_SIGN_NAME: ${SMS_SIGN_NAME:-}
       SMS_TEMPLATE_CODE: ${SMS_TEMPLATE_CODE:-}
+      # 认证模式：phone=手机验证（默认），email=邮箱验证（改 .env 即可切换）
+      AUTH_MODE: ${AUTH_MODE:-phone}
+      # 昵称修改间隔（天，0=不限制）；管理员修改任意用户昵称不受此限制
+      NICKNAME_CHANGE_INTERVAL_DAYS: ${NICKNAME_CHANGE_INTERVAL_DAYS:-7}
+      # 阶段七合规：PII 加密密钥（>=16 字符，必填，变更会导致历史密文不可解密）
+      APP_PII_KEY: ${APP_PII_KEY:?请在 .env 配置 APP_PII_KEY(>=16字符)}
+      # 实名 mock（接入阿里云实人认证后置 false）
+      REALNAME_MOCK: ${REALNAME_MOCK:-true}
+      # 合规定时任务（多实例扩展时主实例 true，其余 false）
+      COMPLIANCE_JOB_ENABLED: ${COMPLIANCE_JOB_ENABLED:-true}
       # TURN 静态凭据（coturn 配置见 ./coturn/turnserver.conf）；未填则前端退化为 STUN
       TURN_URL: ${TURN_URL:-stun:stun.l.google.com:19302}
       TURN_USERNAME: ${TURN_USERNAME:-}
       TURN_PASSWORD: ${TURN_PASSWORD:-}
+      # 邮箱验证（AUTH_MODE=email 时真实发信；MAIL_PASSWORD 为邮箱 SMTP 授权码，非登录密码）
+      MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_ENABLED: ${MAIL_ENABLED:-false}
     volumes:
       - app-uploads:/app/uploads
     depends_on:

@@ -20,6 +20,9 @@ export const useUserStore = defineStore('user', {
     isLoggedIn: (state) => !!state.accessToken,
     nickname: (state) => state.userInfo?.nickname ?? '',
     avatar: (state) => state.userInfo?.avatar ?? '',
+    /** 是否管理员（阶段七：仅本人可见管理入口，后端仍二次校验） */
+    isAdmin: (state) => !!state.userInfo?.isAdmin,
+    realnameStatus: (state) => state.userInfo?.realnameStatus ?? 0,
   },
 
   actions: {

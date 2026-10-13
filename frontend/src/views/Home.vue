@@ -72,7 +72,14 @@ onActivated(() => {
       </router-link>
     </div>
 
-    <van-tabs v-model:active="activeTab" sticky class="feed-tabs" @change="onTabChange">
+    <van-tabs
+      v-model:active="activeTab"
+      sticky
+      class="feed-tabs"
+      color="#1e90ff"
+      title-active-color="#1e90ff"
+      @change="onTabChange"
+    >
       <van-tab title="关注" name="following" />
       <van-tab title="推荐" name="recommend" />
     </van-tabs>

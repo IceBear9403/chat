@@ -47,9 +47,11 @@ export function connectChat(opts: {
   }
 
   client = new Client({
-    // 每次连接/重连读取最新 token
+    // 每次连接/重连读取最新 token；路径前缀与 Vite base 保持一致（子路径部署为 /chat/）
     webSocketFactory: () =>
-      new WebSocket(`/ws?token=${encodeURIComponent(getAccessToken())}`),
+      new WebSocket(
+        `${import.meta.env.BASE_URL}ws?token=${encodeURIComponent(getAccessToken())}`,
+      ),
     reconnectDelay: 5000,
     heartbeatIncoming: 15000,
     heartbeatOutgoing: 15000,

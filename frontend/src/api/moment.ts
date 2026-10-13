@@ -60,5 +60,7 @@ export const momentApi = {
 
   remove: (id: number): Promise<null> => http.delete<null, null>(`/moment/${id}`),
 
-  report: (id: number): Promise<null> => http.post<null, null>(`/moment/${id}/report`),
+  /** 举报动态（reason 可选） */
+  report: (id: number, reason?: string): Promise<null> =>
+    http.post<null, null>(`/moment/${id}/report`, { reason }),
 }

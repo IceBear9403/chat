@@ -16,6 +16,16 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       database: 0
+  mail:
+    # 邮箱验证码 SMTP 发信（AUTH_MODE=email 时使用）。授权码经环境变量注入，不落明文
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      mail.smtp.ssl.trust: "*"
 
 mybatis-plus:
   configuration:
@@ -31,11 +41,30 @@ springdoc:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:https://your-domain.com}
+  auth:
+    # 认证模式：phone=手机验证，email=邮箱验证（改环境变量 AUTH_MODE 切换）
+    mode: ${AUTH_MODE:phone}
   verify-code:
     # 接入阿里云短信后置为 false 并配置签名/模板
     mock-enabled: ${VERIFY_CODE_MOCK:false}
     sms-sign-name: ${SMS_SIGN_NAME:}
     sms-template-code: ${SMS_TEMPLATE_CODE:}
+  mail:
+    # 邮箱验证码真实发信开关（AUTH_MODE=email 且配置好 MAIL_* 后置 true）
+    enabled: ${MAIL_ENABLED:false}
+    from: ${MAIL_FROM:}
+  nickname:
+    # 昵称修改间隔（天，0=不限制）；管理员修改任意用户昵称不受此限制
+    change-interval-days: ${NICKNAME_CHANGE_INTERVAL_DAYS:7}
+  pii:
+    # PII 加密密钥（>=16 字符），必须经环境变量注入，不得落明文
+    key: ${APP_PII_KEY:}
+  realname:
+    # mock：接入阿里云实人认证前先用 mock 通过
+    mock-enabled: ${REALNAME_MOCK:true}
+  compliance:
+    # 单实例部署默认开启；多实例扩展时对主实例保留 true，其余置 false
+    job-enabled: ${COMPLIANCE_JOB_ENABLED:true}
   webrtc:
     # 生产 ICE：公共 STUN + 自建 coturn TURN（阶段六静态凭据，经 env 注入）。
     # TURN_URL 留空时第三个条目退化为 STUN 兜底（前端会过滤空 urls）。
@@ -49,5 +78,5 @@ app:
 logging:
   level:
     com.social: info
-  file:
-    name: /logs/social.log
+  # 日志只走 stdout，由 docker json-file 驱动轮转（50m×5）；
+  # 不再配置 file.name —— 容器内文件无卷挂载会无限增长且 docker logs 看不到。

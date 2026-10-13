@@ -1,21 +1,50 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { authApi } from '@/api/auth'
+import IcpFooter from '@/components/IcpFooter.vue'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
+/** 认证模式：phone=手机验证，email=邮箱验证。由后端 app.auth.mode 决定，启动时拉取 */
+const authMode = ref<'phone' | 'email'>('phone')
 const mode = ref<'password' | 'code'>('password')
-const phone = ref('')
+const account = ref('')
 const password = ref('')
 const code = ref('')
 const loading = ref(false)
 const countdown = ref(0)
 let timer: number | undefined
+
+const isEmail = () => authMode.value === 'email'
+
+onMounted(async () => {
+  try {
+    const cfg = await authApi.config()
+    authMode.value = cfg.authMode
+  } catch {
+    // 后端未启动/异常时默认手机验证
+  }
+})
+
+function accountLabel(): string {
+  return isEmail() ? '邮箱' : '手机号'
+}
+
+function accountPlaceholder(): string {
+  return isEmail() ? '请输入邮箱' : '请输入手机号'
+}
+
+function isValidAccount(): boolean {
+  const v = account.value.trim()
+  return isEmail()
+    ? /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(v)
+    : /^1[3-9]\d{9}$/.test(v)
+}
 
 function startCountdown() {
   countdown.value = 60
@@ -29,12 +58,12 @@ function startCountdown() {
 }
 
 async function sendCode() {
-  if (!/^1[3-9]\d{9}$/.test(phone.value)) {
-    showToast('请输入正确的手机号')
+  if (!isValidAccount()) {
+    showToast(isEmail() ? '请输入正确的邮箱' : '请输入正确的手机号')
     return
   }
   try {
-    await authApi.sendCode({ phone: phone.value, scene: 'login' })
+    await authApi.sendCode({ account: account.value.trim(), scene: 'login' })
     showToast('验证码已发送')
     startCountdown()
   } catch (e) {
@@ -43,16 +72,17 @@ async function sendCode() {
 }
 
 async function onSubmit() {
-  if (!/^1[3-9]\d{9}$/.test(phone.value)) {
-    showToast('请输入正确的手机号')
+  if (!isValidAccount()) {
+    showToast(isEmail() ? '请输入正确的邮箱' : '请输入正确的手机号')
     return
   }
   loading.value = true
   try {
+    const acc = account.value.trim()
     if (mode.value === 'password') {
-      await userStore.login({ phone: phone.value, password: password.value })
+      await userStore.login({ account: acc, password: password.value })
     } else {
-      await userStore.loginByCode({ phone: phone.value, code: code.value })
+      await userStore.loginByCode({ account: acc, code: code.value })
     }
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
     router.replace(redirect)
@@ -79,18 +109,23 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="login-card">
-      <van-tabs v-model:active="mode" sticky>
+      <van-tabs
+        v-model:active="mode"
+        sticky
+        color="#1e90ff"
+        title-active-color="#1e90ff"
+      >
         <van-tab title="密码登录" name="password" />
         <van-tab title="验证码登录" name="code" />
       </van-tabs>
 
       <van-cell-group inset>
         <van-field
-          v-model="phone"
-          type="tel"
-          label="手机号"
-          placeholder="请输入手机号"
-          maxlength="11"
+          v-model="account"
+          :type="isEmail() ? 'text' : 'tel'"
+          :label="accountLabel()"
+          :placeholder="accountPlaceholder()"
+          :maxlength="isEmail() ? 64 : 11"
         />
         <van-field
           v-if="mode === 'password'"
@@ -131,6 +166,8 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+
+    <IcpFooter />
   </div>
 </template>
 

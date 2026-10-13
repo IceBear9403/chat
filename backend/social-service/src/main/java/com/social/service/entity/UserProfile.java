@@ -34,6 +34,18 @@ public class UserProfile {
 
     private String region;
 
+    /** 最近一次自行修改昵称的时间（昵称修改间隔限制；管理员/系统改名不计入） */
+    private LocalDateTime nicknameUpdatedAt;
+
+    /** 真实姓名（AES-GCM 加密存储，阶段七实名） */
+    private String realName;
+
+    /** 身份证号（AES-GCM 加密存储，阶段七实名） */
+    private String idCard;
+
+    /** 实名状态：0 未实名，1 已实名 */
+    private Integer realnameStatus;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

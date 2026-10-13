@@ -17,6 +17,8 @@ public class MomentVO {
     private Integer type;
     private String content;
     private Integer visibility;
+    /** 状态：0 待审核，1 已发布，2 审核未通过，3 已删除（作者视角展示审核中/未通过标记） */
+    private Integer status;
     private List<MomentMediaVO> media;
     private Integer likeCount;
     private Integer commentCount;

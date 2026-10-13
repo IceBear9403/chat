@@ -44,6 +44,12 @@ const routes = [
         component: () => import('@/views/Profile.vue'),
         meta: { title: '我的' },
       },
+      {
+        path: 'profile/edit',
+        name: 'profileEdit',
+        component: () => import('@/views/EditProfile.vue'),
+        meta: { title: '编辑资料' },
+      },
     ],
   },
   {
@@ -53,13 +59,33 @@ const routes = [
     meta: { title: '聊天' },
   },
   {
+    path: '/realname',
+    name: 'realname',
+    component: () => import('@/views/RealName.vue'),
+    meta: { title: '实名认证' },
+  },
+  {
+    path: '/privacy',
+    name: 'privacy',
+    component: () => import('@/views/Privacy.vue'),
+    meta: { title: '隐私政策' },
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: () => import('@/views/Admin.vue'),
+    meta: { title: '管理后台' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/home',
   },
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  // 与 Vite base 保持一致（子路径部署时 BASE_URL 为 '/chat/'），
+  // 否则刷新页面会 404、router.replace 也会跳到应用之外
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
 })
 

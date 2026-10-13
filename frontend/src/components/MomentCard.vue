@@ -15,6 +15,42 @@ const emit = defineEmits<{
 const userStore = useUserStore()
 const isOwner = computed(() => props.moment.author.userId === userStore.userInfo?.id)
 
+// ---------- 状态徽标（阶段七先发后审） ----------
+const statusBadge = computed(() => {
+  if (props.moment.status === 0) return { text: '审核中', type: 'warning' as const }
+  if (props.moment.status === 2) return { text: '未通过', type: 'danger' as const }
+  return null
+})
+
+// ---------- 更多操作（举报 / 删除） ----------
+const moreShow = ref(false)
+const reportReason = ref('')
+const reportOpen = ref(false)
+
+function onMore() {
+  moreShow.value = true
+}
+
+async function onMoreSelect(action: { name: string }) {
+  moreShow.value = false
+  if (action.name === '删除') {
+    await onDelete()
+  } else if (action.name === '举报') {
+    reportReason.value = ''
+    reportOpen.value = true
+  }
+}
+
+async function submitReport() {
+  try {
+    await momentApi.report(props.moment.id, reportReason.value.trim() || undefined)
+    reportOpen.value = false
+    showToast('举报已提交，我们会尽快处理')
+  } catch (e) {
+    showToast((e as Error).message)
+  }
+}
+
 // ---------- 点赞动效 ----------
 const likeLoading = ref(false)
 const poping = ref(false)
@@ -200,13 +236,19 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
         </template>
       </van-image>
       <div class="moment-meta">
-        <div class="moment-nickname">{{ moment.author.nickname }}</div>
+        <div class="moment-nickname">
+          {{ moment.author.nickname }}
+          <van-tag v-if="statusBadge" :type="statusBadge.type" plain size="medium">
+            {{ statusBadge.text }}
+          </van-tag>
+        </div>
         <div class="moment-time text-secondary">
           {{ formatTime(moment.createdAt) }}
           <van-icon :name="moment.visibility === 1 ? 'friends-o' : moment.visibility === 2 ? 'lock' : 'eye-o'" size="13" />
           <span>{{ visibilityText(moment.visibility) }}</span>
         </div>
       </div>
+      <van-icon name="ellipsis" size="20" class="more-icon" @click="onMore" />
     </div>
 
     <!-- 正文 -->
@@ -347,6 +389,38 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
         </div>
       </div>
     </van-popup>
+
+    <!-- 更多操作：举报 / 删除 -->
+    <van-action-sheet
+      v-model:show="moreShow"
+      :actions="isOwner
+        ? [{ name: '删除', subname: '仅删除自己的动态', color: '#ee0a24' }]
+        : [{ name: '举报', subname: '提交违规举报', color: '#ee0a24' }]"
+      cancel-text="取消"
+      close-on-click-action
+      @select="onMoreSelect"
+    />
+
+    <!-- 举报理由弹层 -->
+    <van-popup v-model:show="reportOpen" position="bottom" round>
+      <div class="sheet">
+        <div class="sheet-header">
+          <span class="sheet-title">举报动态</span>
+          <van-icon name="cross" size="20" @click="reportOpen = false" />
+        </div>
+        <div class="repost-form">
+          <van-field
+            v-model="reportReason"
+            type="textarea"
+            rows="3"
+            maxlength="200"
+            show-word-limit
+            placeholder="请描述违规原因（可选，如：涉黄、广告、辱骂等）"
+          />
+          <van-button type="danger" block round @click="submitReport">提交举报</van-button>
+        </div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -387,6 +461,13 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
 
 .moment-meta {
   min-width: 0;
+}
+
+.more-icon {
+  margin-left: auto;
+  color: var(--text-secondary);
+  padding: 4px;
+  cursor: pointer;
 }
 
 .moment-nickname {
@@ -444,7 +525,7 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
   border-radius: 6px;
 }
 
-/* 图片网格 */
+/* 图片网格：多图三列正方形九宫格；单图铺满卡片宽度按原比例展示 */
 .media-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -460,11 +541,23 @@ function mediaStyle(media: { width?: number | null; height?: number | null }) {
   aspect-ratio: 1;
 }
 
+/* 单图：铺满卡片宽度，高度按原生宽高比自适应 */
 .grid-1 {
   display: block;
-  width: 220px;
-  max-width: 100%;
-  animation: grid-pop 0.3s ease-out both;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.grid-1 :deep(.van-image) {
+  display: block;
+  width: 100%;
+}
+
+.grid-1 :deep(.van-image__img) {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
 
 /* 操作栏 */

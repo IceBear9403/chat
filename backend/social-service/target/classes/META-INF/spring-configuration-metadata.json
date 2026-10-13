@@ -6,8 +6,38 @@
       "sourceType": "com.social.service.config.AppProperties"
     },
     {
+      "name": "app.auth",
+      "type": "com.social.service.config.AppProperties$Auth",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
+      "name": "app.compliance",
+      "type": "com.social.service.config.AppProperties$Compliance",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
       "name": "app.jwt",
       "type": "com.social.service.config.AppProperties$Jwt",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
+      "name": "app.mail",
+      "type": "com.social.service.config.AppProperties$Mail",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
+      "name": "app.nickname",
+      "type": "com.social.service.config.AppProperties$Nickname",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
+      "name": "app.pii",
+      "type": "com.social.service.config.AppProperties$Pii",
+      "sourceType": "com.social.service.config.AppProperties"
+    },
+    {
+      "name": "app.realname",
+      "type": "com.social.service.config.AppProperties$RealName",
       "sourceType": "com.social.service.config.AppProperties"
     },
     {
@@ -27,6 +57,20 @@
     }
   ],
   "properties": [
+    {
+      "name": "app.auth.mode",
+      "type": "java.lang.String",
+      "description": "当前生效的认证模式，默认手机验证",
+      "sourceType": "com.social.service.config.AppProperties$Auth",
+      "defaultValue": "phone"
+    },
+    {
+      "name": "app.compliance.job-enabled",
+      "type": "java.lang.Boolean",
+      "description": "任务开关：多实例部署时置 false，避免多个实例重复扫描",
+      "sourceType": "com.social.service.config.AppProperties$Compliance",
+      "defaultValue": true
+    },
     {
       "name": "app.jwt.access-expire-seconds",
       "type": "java.lang.Long",
@@ -52,6 +96,48 @@
       "type": "java.lang.String",
       "description": "refresh token 密钥（>= 32 字符，与 access 不同）",
       "sourceType": "com.social.service.config.AppProperties$Jwt"
+    },
+    {
+      "name": "app.mail.enabled",
+      "type": "java.lang.Boolean",
+      "description": "真实发信开关：true=走 SMTP 发送验证码邮件；false=退回 mock 固定码（本地联调）",
+      "sourceType": "com.social.service.config.AppProperties$Mail",
+      "defaultValue": true
+    },
+    {
+      "name": "app.mail.from",
+      "type": "java.lang.String",
+      "description": "发件人地址（通常与 SMTP 账号一致，QQ 邮箱要求与账号相同）",
+      "sourceType": "com.social.service.config.AppProperties$Mail",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.nickname.banned-prefix",
+      "type": "java.lang.String",
+      "description": "违禁昵称替换前缀（昵称巡检定时任务用），最终形如 \"违禁昵称<毫秒时间戳>\"",
+      "sourceType": "com.social.service.config.AppProperties$Nickname",
+      "defaultValue": "违禁昵称"
+    },
+    {
+      "name": "app.nickname.change-interval-days",
+      "type": "java.lang.Long",
+      "description": "用户自行修改昵称的最小间隔（天），0=不限制。管理员修改昵称不受此限制",
+      "sourceType": "com.social.service.config.AppProperties$Nickname",
+      "defaultValue": 7
+    },
+    {
+      "name": "app.pii.key",
+      "type": "java.lang.String",
+      "description": "加密密钥（>=16 字符）。生产用环境变量 APP_PII_KEY 注入，不得落明文",
+      "sourceType": "com.social.service.config.AppProperties$Pii",
+      "defaultValue": ""
+    },
+    {
+      "name": "app.realname.mock-enabled",
+      "type": "java.lang.Boolean",
+      "description": "mock 开关：开启时实名直接通过（当前无短信\/实人服务），生产接入后置 false",
+      "sourceType": "com.social.service.config.AppProperties$RealName",
+      "defaultValue": true
     },
     {
       "name": "app.storage.local-path",

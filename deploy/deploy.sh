@@ -62,15 +62,33 @@ render('nginx/default.conf', 'nginx/generated/default.conf')
 render('coturn/turnserver.conf', 'coturn/generated/turnserver.conf')
 PY
 
-DOMAIN=$(grep -E '^DOMAIN=' .env | cut -d= -f2)
-# ---------- 4. 证书检查 ----------
+DOMAIN=$(grep -E '^DOMAIN=' .env | head -1 | cut -d= -f2- | tr -d ' \t"\'"'")
+
+# ---------- 4. 必填变量校验（防止带着占位值/空值直接部署） ----------
+REQUIRED_VARS=(ECS_PUBLIC_IP DOMAIN MYSQL_ROOT_PASSWORD MYSQL_PASSWORD REDIS_PASSWORD JWT_ACCESS_SECRET JWT_REFRESH_SECRET CORS_ALLOWED_ORIGINS APP_PII_KEY)
+MISSING=""
+for v in "${REQUIRED_VARS[@]}"; do
+  val=$(grep -E "^${v}=" .env | head -1 | cut -d= -f2- | tr -d ' \t"\'"'")
+  if [ -z "$val" ]; then
+    MISSING="$MISSING $v(空)"
+  elif echo "$val" | grep -qE '请改|你的|change-me|example|XXX'; then
+    MISSING="$MISSING $v(仍为示例占位)"
+  fi
+done
+if [ -n "$MISSING" ]; then
+  echo "✗ 以下必填变量未配置，请先编辑 .env:"
+  echo "  $MISSING"
+  exit 1
+fi
+
+# ---------- 5. 证书检查 ----------
 if [ ! -f "ssl/certs/${DOMAIN}.crt" ] || [ ! -f "ssl/certs/${DOMAIN}.key" ]; then
   echo "⚠ 未发现 SSL 证书 ssl/certs/${DOMAIN}.crt / .key"
   echo "  可运行 ./ssl/issue-cert.sh 通过 certbot 获取，或在阿里云控制台下载 DV 证书后放入 ssl/certs/"
   echo "  未放证书前 nginx 将无法启动。"
 fi
 
-# ---------- 5. 启动 ----------
+# ---------- 6. 启动 ----------
 echo "→ 构建并启动服务（首次构建需数分钟）..."
 docker compose up -d --build
 

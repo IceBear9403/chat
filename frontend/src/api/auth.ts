@@ -1,29 +1,36 @@
 import http from './http'
-import type { LoginVO, TokenVO } from '@/types'
+import type { AuthConfigVO, LoginVO, TokenVO } from '@/types'
 
+/**
+ * account 为当前认证模式（app.auth.mode）下的账号：
+ * phone 模式=手机号，email 模式=邮箱。
+ */
 export interface SendCodeParams {
-  phone: string
+  account: string
   scene: 'register' | 'login' | 'resetPassword'
 }
 
 export interface RegisterParams {
-  phone: string
+  account: string
   password: string
   code: string
   nickname?: string
 }
 
 export interface LoginParams {
-  phone: string
+  account: string
   password: string
 }
 
 export interface CodeLoginParams {
-  phone: string
+  account: string
   code: string
 }
 
 export const authApi = {
+  /** 认证配置：authMode=phone/email，供登录/注册页按模式渲染 */
+  config: (): Promise<AuthConfigVO> => http.get<AuthConfigVO, AuthConfigVO>('/auth/config'),
+
   sendCode: (payload: SendCodeParams): Promise<string> =>
     http.post<string, string>('/auth/send-code', payload),
 

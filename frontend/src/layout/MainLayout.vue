@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 import { useChatStore } from '@/store/chat'
 import { useCallStore } from '@/store/call'
+import IcpFooter from '@/components/IcpFooter.vue'
 
 const route = useRoute()
 const chatStore = useChatStore()
@@ -29,6 +30,9 @@ onMounted(() => {
         </keep-alive>
       </transition>
     </router-view>
+
+    <!-- 备案号页脚（VITE_ICP 构建注入；置于 tabbar 之前，随内容滚动到底部可见） -->
+    <IcpFooter />
 
     <van-tabbar :fixed="true" :placeholder="true" route>
       <van-tabbar-item replace to="/home" icon="wap-home-o">首页</van-tabbar-item>

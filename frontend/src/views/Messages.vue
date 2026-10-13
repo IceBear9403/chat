@@ -163,14 +163,14 @@ async function startChat(user: UserVO) {
         <div class="search-input">
           <van-search
             v-model="keyword"
-            placeholder="搜索昵称或手机号"
+            placeholder="搜索昵称或邮箱"
             @update:model-value="onSearch"
           />
         </div>
         <div class="search-results">
           <div v-if="searching" class="text-secondary sheet-tip">搜索中...</div>
           <div v-else-if="results.length === 0" class="text-secondary sheet-tip">
-            {{ keyword ? '未找到相关用户' : '输入昵称或手机号查找好友' }}
+            {{ keyword ? '未找到相关用户' : '输入昵称或邮箱查找好友' }}
           </div>
           <div
             v-for="u in results"
@@ -185,7 +185,7 @@ async function startChat(user: UserVO) {
             </van-image>
             <div class="result-info">
               <div class="result-nickname">{{ u.nickname }}</div>
-              <div class="text-secondary result-phone">{{ u.phone }}</div>
+              <div class="text-secondary result-phone">{{ u.phone || u.email || '' }}</div>
             </div>
             <van-button size="small" type="primary" round>发消息</van-button>
           </div>

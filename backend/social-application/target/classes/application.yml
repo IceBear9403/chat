@@ -16,6 +16,18 @@ spring:
     multipart:
       max-file-size: 20MB
       max-request-size: 20MB
+  mail:
+    # 邮箱验证码 SMTP 发信（阶段八）。QQ 邮箱默认，其它服务商改 host/port；
+    # 账号/授权码按环境注入：dev 见 application-dev.yml，prod 走 MAIL_USERNAME / MAIL_PASSWORD 环境变量
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.ssl.enable: true
+      # 通用信任 SMTP 证书，避免各服务商证书校验失败（如 QQ 需显式 trust）
+      mail.smtp.ssl.trust: "*"
 
 mybatis-plus:
   configuration:
@@ -49,10 +61,31 @@ app:
     access-expire-seconds: 7200
     refresh-secret: ${JWT_REFRESH_SECRET:change-me-refresh-secret-please-32chars}
     refresh-expire-seconds: 604800
+  auth:
+    # 认证模式：phone=手机验证，email=邮箱验证（改这里即可切换；手机验证代码保留）
+    # mode: phone
+    mode: email
   verify-code:
     mock-enabled: true
     mock-code: "123456"
     expire-seconds: 300
+  mail:
+    # 邮箱验证码真实发信开关：true=SMTP 真实发信；false=退回 mock 固定码（本地联调）
+    enabled: ${MAIL_ENABLED:true}
+    # 发件人地址（通常与 SMTP 账号一致，QQ 邮箱要求一致）；未配置时退回 mock 联调
+    from: ${MAIL_FROM:}
+  nickname:
+    # 昵称修改间隔（天，0=不限制）；管理员修改任意用户昵称不受此限制
+    change-interval-days: ${NICKNAME_CHANGE_INTERVAL_DAYS:7}
+  pii:
+    # PII 加密密钥（>=16 字符）。开发可留空=明文透传；生产必须用环境变量 APP_PII_KEY 注入
+    key: ${APP_PII_KEY:}
+  realname:
+    # mock：直接记录姓名+身份证通过；接入阿里云实人认证后置 false
+    mock-enabled: true
+  compliance:
+    # 合规定时任务开关（多实例部署时置 false 避免重复扫描），默认开启
+    job-enabled: true
   webrtc:
     # 阶段四先用公共 STUN，跨网 N 2 N 需 TURN；阶段六自建 coturn 后替换
     ice-servers:

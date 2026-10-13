@@ -13,11 +13,21 @@ spring:
       port: 16379
       password: 1QAZ2wsx!@
       timeout: 2000ms
+  mail:
+    # 本地开发直接用 QQ 邮箱 SMTP 发信（邮箱地址 + 授权码，非邮箱登录密码）。
+    # 授权码为开发便捷默认值，生产环境不要写在这里，改由环境变量 MAIL_USERNAME / MAIL_PASSWORD 注入。
+    username: ${MAIL_USERNAME:1749115603@qq.com}
+    password: ${MAIL_PASSWORD:avltdyxyhkoobhbf}
 
 mybatis-plus:
   configuration:
     # 开发阶段打印 SQL，便于排查；生产 profile 关闭
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+app:
+  mail:
+    # 发件人 = SMTP 账号（QQ 邮箱要求发件人与登录账号一致）
+    from: ${MAIL_FROM:1749115603@qq.com}
 
 logging:
   level:

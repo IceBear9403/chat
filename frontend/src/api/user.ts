@@ -18,7 +18,7 @@ export interface UpdatePrivacyParams {
 export const userApi = {
   me: (): Promise<UserVO> => http.get<UserVO, UserVO>('/user/me'),
 
-  /** 搜索用户（昵称/手机号），发起会话用 */
+  /** 搜索用户（昵称/邮箱，兼容手机号精确匹配），发起会话用 */
   search: (keyword: string): Promise<UserVO[]> =>
     http.get<UserVO[], UserVO[]>('/user/search', { params: { keyword } }),
 
@@ -29,4 +29,12 @@ export const userApi = {
 
   updatePrivacy: (payload: UpdatePrivacyParams): Promise<FeedRuleVO> =>
     http.put<FeedRuleVO, FeedRuleVO>('/user/privacy', payload),
+
+  /** 实名认证（阶段七） */
+  bindRealName: (payload: { realName: string; idCard: string }): Promise<UserVO> =>
+    http.post<UserVO, UserVO>('/user/realname', payload),
+
+  /** 注销账号（需密码确认） */
+  deleteAccount: (password: string): Promise<null> =>
+    http.post<null, null>('/user/delete-account', { password }),
 }

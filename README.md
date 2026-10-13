@@ -2,7 +2,7 @@
 
 移动端 H5 社交平台，对标微信朋友圈 + 私聊 + 语音/视频通话。前端 H5（Vue 3 + Vite + TypeScript + Vant），后端 Spring Boot 3 多模块。部署目标：阿里云 ECS（Ubuntu）+ 已备案域名。
 
-> 当前进度：**阶段一~六已完成**。生产部署配置就绪（`deploy/`），待按 [DEPLOY.md](deploy/DEPLOY.md) 在阿里云执行；阶段七（合规与运维）待开发。
+> 当前进度：**阶段一~七已完成**。生产部署配置就绪（`deploy/`），待按 [DEPLOY.md](deploy/DEPLOY.md) 在阿里云执行。
 
 ## 目录结构
 
@@ -53,6 +53,39 @@ npm run dev
 ### 4. 联调验证码
 
 dev 环境 `app.verify-code.mock-enabled=true`，验证码固定为 `123456`（注册/登录通用）。
+
+### 5. 认证模式切换（手机 / 邮箱）
+
+改后端配置 `app.auth.mode`（生产为 `.env` 的 `AUTH_MODE`）即可切换：
+
+- `phone`（默认）：手机号注册/登录 + 短信验证码（保留原有逻辑）
+- `email`：邮箱注册/登录 + 邮箱验证码（SMTP 真实发信，见下）
+
+前端登录/注册页启动时通过 `GET /api/auth/config` 自动读取当前模式，无需改前端代码。
+发起会话按**昵称或邮箱**搜索（手机号精确匹配保留，老账号仍可搜到）。
+邮箱/手机号均加密存储 + SHA-256 检索键；切换前需在远程库执行 `docs/sql/migration_phase8_email.sql`（新增 `email_hash`、`phone` 允许为空）。
+
+### 6. 邮箱验证码真实发送（SMTP）
+
+`email` 模式下验证码走 SMTP 真实发信，配置分两处：
+
+- **SMTP 服务器**：`spring.mail.host/port/username/password`（QQ 邮箱默认 `smtp.qq.com:465`；密码填邮箱「设置→账号→开启 SMTP 服务」生成的**授权码**，非登录密码）
+- **业务开关/发件人**：`app.mail.enabled`（true=真实发信）、`app.mail.from`（发件人，通常与 SMTP 账号一致）
+
+`app.mail.enabled=true` 且发件人已配置 → 生成随机验证码并真实发信，接口返回「验证码已发送」；
+否则退回 mock 固定码 `123456`（本地联调，开发模式适用）。
+
+dev 环境已在 `application-dev.yml` 填好 QQ 授权码（可用 `MAIL_USERNAME` / `MAIL_PASSWORD` / `MAIL_FROM` 环境变量覆盖）；
+生产由 `.env` 的 `MAIL_HOST / MAIL_PORT / MAIL_USERNAME / MAIL_PASSWORD / MAIL_FROM / MAIL_ENABLED` 注入（见 [deploy/.env.example](deploy/.env.example)），授权码不落明文配置。
+163 / 126 等其它服务商改 `MAIL_HOST` / `MAIL_PORT` 即可。
+
+### 7. 个人信息设置与昵称管理
+
+- **个人信息设置**：「我的 → 编辑资料」可更换头像（上传到 `avatar` bucket）、修改昵称与个性签名。
+- **昵称修改间隔**：`app.nickname.change-interval-days`（生产为 `.env` 的 `NICKNAME_CHANGE_INTERVAL_DAYS`，默认 `7` 天，`0`=不限制）。用户每次自行改名后记录 `user_profile.nickname_updated_at`，间隔内再次修改会被拒绝；**管理员不受此限制**。
+- **管理员改昵称**：管理后台「用户管理 → 改昵称」可修改任意用户昵称（不受间隔限制），操作写入操作日志。
+- **违禁昵称定时任务**：每 30 分钟巡检昵称，命中敏感词（`sensitive-words.txt`）的自动改为「违禁昵称+毫秒时间戳」，并记录操作日志；改名不计入用户的修改间隔，用户可立即再自行改名。
+- 需在远程库执行 `docs/sql/migration_phase9_nickname.sql`（新增 `nickname_updated_at`，幂等）。
 
 ## 阶段一已实现功能
 
@@ -174,6 +207,18 @@ cp .env.example .env   # 逐项填写
 ./deploy.sh
 ```
 
+## 阶段七：合规与运维
+
+围绕《网络安全法》等要求的合规能力，已随部署配置就绪：
+
+- **内容审核（先发后审）**：本地 DFA 敏感词库（`sensitive-words.txt`）命中 → 动态置「审核中」仅作者可见；管理后台通过/拒绝；定时巡检兜底
+- **实名认证**：姓名+身份证 AES-GCM 加密登记（当前 mock 通过，接入阿里云实人认证后置 `REALNAME_MOCK=false`）
+- **举报/封禁**：动态卡片举报入口；管理后台封禁用户立即生效（Redis `ban:user:{id}` 中断在线会话）
+- **数据合规**：手机号加密 + `phone_hash` 查重；注销账号抹除敏感信息；操作日志留存 180 天自动清理
+- **管理后台**：H5 内嵌 `/admin`，含 用户管理 / 内容审核 / 举报处理 / 操作日志
+- **监控运维**：`deploy/monitor.sh` + MySQL 慢查询日志 + Redis maxmemory，详见 [deploy/ops.md](deploy/ops.md)
+- **迁移 SQL**：`docs/sql/migration_phase7_compliance.sql`（幂等），老用户手机号由启动器自动加密回填
+
 ## 后续阶段
 
 | 阶段 | 内容 | 状态 |
@@ -184,6 +229,6 @@ cp .env.example .env   # 逐项填写
 | 四 | 音视频通话：WebRTC 信令 + TURN 降级 | ✅（TURN 阶段六已配 coturn） |
 | 五 | UI 打磨 + 动效 + 暗色主题 + 性能优化 | ✅ |
 | 六 | 阿里云生产部署：docker-compose + Nginx + coturn + SSL | ✅（配置就绪，待在服务器执行） |
-| 七 | 合规与运维：内容审核、实名、备份、监控 | ⏳ |
+| 七 | 合规与运维：内容审核、实名、举报封禁、监控 | ✅ |
 
 详细技术方案见根目录 `prompt-社交网站-DeepSeek.md`。

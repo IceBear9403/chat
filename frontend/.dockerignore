@@ -1,0 +1,8 @@
+# 构建上下文精简：node_modules 与 dist 由镜像内重建，无需上传
+node_modules/
+dist/
+*.log
+.idea/
+.vscode/
+.DS_Store
+.git/

@@ -1,5 +1,7 @@
 package com.social.api.controller;
 
+import com.social.api.dto.request.DeleteAccountRequest;
+import com.social.api.dto.request.RealNameRequest;
 import com.social.api.dto.request.UpdatePrivacyRequest;
 import com.social.api.dto.request.UpdateProfileRequest;
 import com.social.common.context.UserContext;
@@ -12,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -69,5 +72,21 @@ public class UserController {
                 request.getMomentsVisible(),
                 request.getAllowStrangerReply(),
                 request.getChatPolicy()));
+    }
+
+    @Operation(summary = "实名认证（阶段七合规）")
+    @PostMapping("/realname")
+    public Result<UserVO> bindRealName(@Valid @RequestBody RealNameRequest request) {
+        return Result.ok(userService.bindRealName(
+                UserContext.getUserId(),
+                request.getRealName(),
+                request.getIdCard()));
+    }
+
+    @Operation(summary = "注销账号（需密码确认）")
+    @PostMapping("/delete-account")
+    public Result<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest request) {
+        userService.deleteAccount(UserContext.getUserId(), request.getPassword());
+        return Result.ok();
     }
 }
